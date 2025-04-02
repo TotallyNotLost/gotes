@@ -5,6 +5,7 @@ import tea "github.com/charmbracelet/bubbletea"
 import "github.com/charmbracelet/bubbles/list"
 import "github.com/charmbracelet/bubbles/viewport"
 import "github.com/charmbracelet/lipgloss"
+import "github.com/google/uuid"
 import "github.com/samber/lo"
 import "log"
 import "regexp"
@@ -57,7 +58,7 @@ func (m viewportModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 			if msg.String() == "enter" && m.newNote.state == writingTags {
-				note := "\n---\n" + m.newNote.textarea.Value() + "\n\n[_metadata_:tags]:# \"" + m.newNote.tagsInput.Value() + "\""
+				note := "\n---\n" + m.newNote.textarea.Value() + "\n\n[_metadata_:id]:# \"" + uuid.New().String() + "\"\n[_metadata_:tags]:# \"" + m.newNote.tagsInput.Value() + "\""
 
 				f, err := os.OpenFile(os.Args[1], os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
 				if err != nil {
