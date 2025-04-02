@@ -8,6 +8,7 @@ import "github.com/charmbracelet/lipgloss"
 import "github.com/samber/lo"
 import "log"
 import "regexp"
+import "slices"
 import "strings"
 
 type item struct {
@@ -84,9 +85,10 @@ func (m viewportModel) View() string {
 func newList() list.Model {
 	items := []list.Item{}
 
-	notes := strings.SplitSeq(ReadFile(os.Args[1]), "\n---\n")
+	notes := strings.Split(ReadFile(os.Args[1]), "\n---\n")
 
-	for note := range notes {
+	for i := range slices.Backward(notes) {
+		note := notes[i]
 		title := strings.Split(normalize(note), "\n")[0]
 		metadata := getMetadata(note)
 		var itm item
