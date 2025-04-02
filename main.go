@@ -15,6 +15,14 @@ type item struct {
 	title, content, desc string
 }
 
+type mode int
+
+const (
+	browsing mode = 0
+	viewing = 1
+	creating = 2
+)
+
 func (i item) Title() string       { return i.title }
 func (i item) Description() string { return i.desc }
 func (i item) FilterValue() string { return i.title }
@@ -29,7 +37,8 @@ var pageStyle = lipgloss.NewStyle()
 type viewportModel struct {
 	viewport viewport.Model
 	list list.Model
-	Chosen bool
+	newNote *newNoteModel
+	mode mode
 }
 
 func (model viewportModel) Init() tea.Cmd {
@@ -37,26 +46,65 @@ func (model viewportModel) Init() tea.Cmd {
 }
 
 func (m viewportModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var cmd tea.Cmd
+
+	if m.mode == creating {
+		switch msg := msg.(type) {
+		case tea.KeyMsg:
+			if msg.String() == "esc" {
+				m.mode = browsing
+				return m, nil
+			}
+
+			if msg.String() == "enter" && m.newNote.state == writingTags {
+				note := "\n---\n" + m.newNote.textarea.Value() + "\n[_metadata_:tags]:# \"" + m.newNote.tagsInput.Value() + "\""
+
+				f, err := os.OpenFile(os.Args[1], os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
+				if err != nil {
+					panic(err)
+				}
+
+				defer f.Close()
+
+				if _, err = f.WriteString(note); err != nil {
+					panic(err)
+				}
+
+				
+				m.mode = browsing
+				return m, nil
+			}
+		}
+
+		n, cmd := m.newNote.Update(msg)
+		m.newNote = &n
+		return m, cmd
+	}
+
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "q", "ctrl+c":
 			return m, tea.Quit
 		case "esc":
-			m.Chosen = false
+			m.mode = browsing
 			return m, nil
 		case "enter":
-			i, ok := m.list.SelectedItem().(item)
-			if ok {
-				e, _ := newExample(i)
-				m.viewport.SetContent(pageStyle.Render(e.View()))
-				m.Chosen = true
-				return m, nil
+			if m.mode == browsing {
+				i, ok := m.list.SelectedItem().(item)
+				if ok {
+					e, _ := newExample(i)
+					m.viewport.SetContent(pageStyle.Render(e.View()))
+					m.mode = viewing
+					return m, nil
+				}
+				return m, tea.Quit
 			}
-			return m, tea.Quit
+		case "n":
+			m.newNote, _ = newNote()
+			m.mode = creating
 		default:
-			var cmd tea.Cmd
-			if m.Chosen {
+			if m.mode == viewing {
 				m.viewport, cmd = m.viewport.Update(msg)
 				return m, cmd
 			}
@@ -64,7 +112,7 @@ func (m viewportModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, cmd
 		}
 	case tea.WindowSizeMsg:
-		if !m.Chosen {
+		if m.mode == browsing {
 			h, v := mainStyle.GetFrameSize()
 			m.list.SetSize(msg.Width-h, msg.Height-v)
 			m.list.SetSize(78, 40)
@@ -74,9 +122,10 @@ func (m viewportModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m viewportModel) View() string {
-	if !m.Chosen {
+	if m.mode == browsing {
 		m.viewport.SetContent(pageStyle.Render(m.list.View()))
-	} else {
+	} else if m.mode == creating {
+		m.viewport.SetContent(pageStyle.Render(m.newNote.View()))
 	}
 
 	return mainStyle.Render(m.viewport.View())
