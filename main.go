@@ -57,7 +57,7 @@ func (m viewportModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 			if msg.String() == "enter" && m.newNote.state == writingTags {
-				note := "\n---\n" + m.newNote.textarea.Value() + "\n[_metadata_:tags]:# \"" + m.newNote.tagsInput.Value() + "\""
+				note := "\n---\n" + m.newNote.textarea.Value() + "\n\n[_metadata_:tags]:# \"" + m.newNote.tagsInput.Value() + "\""
 
 				f, err := os.OpenFile(os.Args[1], os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
 				if err != nil {
@@ -70,7 +70,7 @@ func (m viewportModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					panic(err)
 				}
 
-				
+				m.list.SetItems(loadNotes())
 				m.mode = browsing
 				return m, nil
 			}
@@ -132,6 +132,15 @@ func (m viewportModel) View() string {
 }
 
 func newList() list.Model {
+	items := loadNotes()
+
+	l := list.New(items, list.NewDefaultDelegate(), 0, 0)
+	l.Title = os.Args[1]
+
+	return l
+}
+
+func loadNotes() []list.Item {
 	items := []list.Item{}
 
 	notes := strings.Split(ReadFile(os.Args[1]), "\n---\n")
@@ -148,28 +157,10 @@ func newList() list.Model {
 		items = append(items, itm)
 	}
 
-	l := list.New(items, list.NewDefaultDelegate(), 0, 0)
-	l.Title = os.Args[1]
-
-	return l
+	return items
 }
 
 func main() {
-	items := []list.Item{}
-
-	notes := strings.SplitSeq(ReadFile(os.Args[1]), "\n---\n")
-
-	for note := range notes {
-		title := strings.Split(normalize(note), "\n")[0]
-		metadata := getMetadata(note)
-		var itm item
-		itm = item{title: title, content: note}
-		if tags, ok := metadata["tags"]; ok {
-			itm.desc = tags
-		}
-		items = append(items, itm)
-	}
-
 	const width = 78
 
 	vp := viewport.New(width, 40)
