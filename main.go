@@ -41,6 +41,7 @@ type viewportModel struct {
 	newNote *newNoteModel
 	mode mode
 	helpViewport viewport.Model
+	notes []note
 	noteInfos map[string][]noteInfo
 }
 
@@ -84,7 +85,8 @@ func (m viewportModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 
 				m.list.SetItems(loadItems())
-				m.noteInfos = makeNoteInfos(loadNotes())
+				m.notes = loadNotes()
+				m.noteInfos = makeNoteInfos(m.notes)
 				m.mode = browsing
 				return m, nil
 			}
@@ -113,7 +115,12 @@ func (m viewportModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.mode == browsing {
 				i, ok := m.list.SelectedItem().(item)
 				if ok {
-					n, err := renderNote(i, m.viewport)
+					noteInfos := m.noteInfos[i.id]
+					notes := []note{}
+					for _, noteInfo := range noteInfos {
+						notes = append(notes, m.notes[noteInfo.index])
+					}
+					n, err := renderNote(notes, m.viewport)
 					if err != nil {
 						panic(err)
 					}
@@ -252,9 +259,10 @@ func main() {
 	vp := viewport.New(0, 0)
 
 	l := newList()
-	noteInfos := makeNoteInfos(loadNotes())
+	notes := loadNotes()
+	noteInfos := makeNoteInfos(notes)
 
-	p := tea.NewProgram(&viewportModel{ viewport: vp, list: l, helpViewport: viewport.New(0, 1), noteInfos: noteInfos }, tea.WithAltScreen())
+	p := tea.NewProgram(&viewportModel{ viewport: vp, list: l, helpViewport: viewport.New(0, 1), notes: notes, noteInfos: noteInfos }, tea.WithAltScreen())
 
 	if _, err := p.Run(); err != nil {
 		panic(err)

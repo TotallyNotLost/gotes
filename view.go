@@ -9,7 +9,7 @@ func helpView() string {
 	return helpStyle("  ↑/↓: Navigate • esc: Back • q: Quit\n")
 }
 
-func renderNote(i item, vp viewport.Model) (string, error) {
+func renderNote(notes []note, vp viewport.Model) (string, error) {
 	const width = 78
 
 	// We need to adjust the width of the glamour render from our main width
@@ -31,6 +31,7 @@ func renderNote(i item, vp viewport.Model) (string, error) {
 		return "", err
 	}
 
-	return renderer.Render("# " + i.title + "\n" + i.content)
+	n := notes[len(notes) - 1]
+	return renderer.Render("# " + n.title + "\n" + n.body)
 }
 
