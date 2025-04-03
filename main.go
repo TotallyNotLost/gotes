@@ -102,8 +102,6 @@ func (m viewportModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 					m.viewport.SetContent(n)
 					m.helpViewport.SetContent(helpView())
-					// m.viewport.Style = lipgloss.NewStyle().Background(lipgloss.Color("#ff0000"))
-					// m.viewport.Height = 10
 					m.viewport.Height -= m.helpViewport.Height
 					m.mode = viewing
 					return m, nil
