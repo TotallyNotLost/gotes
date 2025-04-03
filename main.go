@@ -26,7 +26,7 @@ const (
 
 func (i item) Title() string       { return i.title }
 func (i item) Description() string { return strings.Join(i.tags, ",") }
-func (i item) FilterValue() string { return i.title }
+func (i item) FilterValue() string { return i.title + " " + i.Description() }
 
 var mainStyle = lipgloss.NewStyle().
 		MarginLeft(2).
@@ -95,6 +95,11 @@ func (m viewportModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
+		// Don't match any of the keys below if we're actively filtering.
+		if m.list.FilterState() == list.Filtering {
+			m.list, cmd = m.list.Update(msg)
+			return m, cmd
+		}
 		switch msg.String() {
 		case "q", "ctrl+c":
 			return m, tea.Quit
@@ -147,7 +152,8 @@ func (m viewportModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.list.SetSize(m.viewport.Width, m.viewport.Height)
 		}
 	}
-	return m, nil
+	m.list, cmd = m.list.Update(msg)
+	return m, cmd
 }
 
 func (m viewportModel) View() string {
