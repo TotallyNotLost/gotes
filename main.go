@@ -40,6 +40,7 @@ type viewportModel struct {
 	list list.Model
 	newNote *newNoteModel
 	mode mode
+	helpViewport viewport.Model
 }
 
 func (model viewportModel) Init() tea.Cmd {
@@ -94,8 +95,16 @@ func (m viewportModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.mode == browsing {
 				i, ok := m.list.SelectedItem().(item)
 				if ok {
-					e, _ := newExample(i)
-					m.viewport.SetContent(pageStyle.Render(e.View()))
+					// e, _ := newExample(i)
+					n, err := renderNote(i, m.viewport)
+					if err != nil {
+						panic(err)
+					}
+					m.viewport.SetContent(n)
+					m.helpViewport.SetContent(helpView())
+					// m.viewport.Style = lipgloss.NewStyle().Background(lipgloss.Color("#ff0000"))
+					// m.viewport.Height = 10
+					m.viewport.Height -= m.helpViewport.Height
 					m.mode = viewing
 					return m, nil
 				}
@@ -113,10 +122,9 @@ func (m viewportModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, cmd
 		}
 	case tea.WindowSizeMsg:
+		m.viewport.Height = msg.Height - 10
 		if m.mode == browsing {
-			h, v := mainStyle.GetFrameSize()
-			m.list.SetSize(msg.Width-h, msg.Height-v)
-			m.list.SetSize(78, 40)
+			m.list.SetSize(m.viewport.Width, m.viewport.Height)
 		}
 	}
 	return m, nil
@@ -127,6 +135,12 @@ func (m viewportModel) View() string {
 		m.viewport.SetContent(pageStyle.Render(m.list.View()))
 	} else if m.mode == creating {
 		m.viewport.SetContent(pageStyle.Render(m.newNote.View()))
+	}
+
+	if m.mode == viewing {
+
+		m.helpViewport.SetContent(helpView())
+		return mainStyle.Render(m.viewport.View() + "\n" + m.helpViewport.View())
 	}
 
 	return mainStyle.Render(m.viewport.View())
@@ -168,7 +182,7 @@ func main() {
 
 	l := newList()
 
-	p := tea.NewProgram(&viewportModel{ viewport: vp, list: l }, tea.WithAltScreen())
+	p := tea.NewProgram(&viewportModel{ viewport: vp, list: l, helpViewport: viewport.New(width, 1) }, tea.WithAltScreen())
 
 	if _, err := p.Run(); err != nil {
 		panic(err)

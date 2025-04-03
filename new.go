@@ -16,6 +16,20 @@ const (
 	writingTags = 1
 )
 
+var (
+	cursorStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("212"))
+
+	cursorLineStyle = lipgloss.NewStyle().
+			Background(lipgloss.Color("57")).
+			Foreground(lipgloss.Color("230"))
+
+	endOfBufferStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("235"))
+
+	focusedPlaceholderStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("99"))
+)
+
 type newNoteModel struct {
 	textarea textarea.Model
 	tagsInput textinput.Model
@@ -87,6 +101,10 @@ func newNote() (*newNoteModel, error) {
 	ta := textarea.New()
 	ta.Placeholder = "Note..."
 	ta.ShowLineNumbers = false
+	ta.Cursor.Style = cursorStyle
+	ta.FocusedStyle.Placeholder = focusedPlaceholderStyle
+	ta.FocusedStyle.CursorLine = cursorLineStyle
+	ta.FocusedStyle.EndOfBuffer = endOfBufferStyle
 	ta.Focus()
 
 	ti := textinput.New()
