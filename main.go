@@ -13,7 +13,7 @@ import "slices"
 import "strings"
 
 type item struct {
-	title, content, desc string
+	id, title, content, desc string
 }
 
 type mode int
@@ -59,8 +59,6 @@ func (m viewportModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 			if msg.String() == "enter" && m.newNote.state == writingTags {
-				note := "\n---\n" + m.newNote.textarea.Value() + "\n\n[_metadata_:id]:# \"" + uuid.New().String() + "\"\n[_metadata_:tags]:# \"" + m.newNote.tagsInput.Value() + "\""
-
 				f, err := os.OpenFile(os.Args[1], os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
 				if err != nil {
 					panic(err)
@@ -68,8 +66,20 @@ func (m viewportModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 				defer f.Close()
 
-				if _, err = f.WriteString(note); err != nil {
-					panic(err)
+				f.WriteString("\n---\n")
+				f.WriteString(m.newNote.textarea.Value())
+
+				id := m.newNote.id
+				tags := m.newNote.tagsInput.Value()
+
+				if (id + tags) != "" {
+					f.WriteString("\n")
+				}
+				if id != "" {
+					f.WriteString("\n[_metadata_:id]:# \"" + id + "\"")
+				}
+				if tags != "" {
+					f.WriteString("\n[_metadata_:tags]:# \"" + tags + "\"")
 				}
 
 				m.list.SetItems(loadNotes())
@@ -109,13 +119,13 @@ func (m viewportModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, tea.Quit
 			}
 		case "n":
-			m.newNote, _ = newNote()
+			m.newNote, _ = newNote(&m.viewport, uuid.New().String())
 			m.mode = creating
 		case "e":
 			i, ok := m.list.SelectedItem().(item)
 			if ok {
-				m.newNote, _ = newNote()
-				m.newNote.textarea.SetValue(i.content)
+				m.newNote, _ = newNote(&m.viewport, i.id)
+				m.newNote.textarea.SetValue(strings.TrimSpace(removeMetadata(i.content)))
 				metadata := getMetadata(i.content)
 				if tags, ok := metadata["tags"]; ok {
 					m.newNote.tagsInput.SetValue(tags)
@@ -171,10 +181,13 @@ func loadNotes() []list.Item {
 
 	for i := range slices.Backward(notes) {
 		note := notes[i]
-		title := strings.Split(normalize(note), "\n")[0]
+		title := strings.Split(note, "\n")[0]
 		metadata := getMetadata(note)
 		var itm item
 		itm = item{title: title, content: note}
+		if id, ok := metadata["id"]; ok {
+			itm.id = id
+		}
 		if tags, ok := metadata["tags"]; ok {
 			itm.desc = tags
 		}
@@ -215,10 +228,6 @@ func SplitNotes(text string) []string {
 	}
 
 	return notes
-}
-
-func normalize(text string) string {
-	return strings.TrimSpace(removeMetadata(text))
 }
 
 func getMetadata(text string) map[string]string {
