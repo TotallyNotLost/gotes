@@ -7,6 +7,8 @@ import "github.com/charmbracelet/bubbles/viewport"
 import "github.com/charmbracelet/lipgloss"
 import "github.com/google/uuid"
 import "github.com/samber/lo"
+import "github.com/TotallyNotLost/gotes/note"
+import "github.com/TotallyNotLost/gotes/viewer"
 import "log"
 import "regexp"
 import "slices"
@@ -38,10 +40,11 @@ var pageStyle = lipgloss.NewStyle()
 type viewportModel struct {
 	viewport viewport.Model
 	list list.Model
+	noteViewer viewer.Model
 	newNote *newNoteModel
 	mode mode
 	helpViewport viewport.Model
-	notes []note
+	notes []note.Note
 	noteInfos map[string][]noteInfo
 }
 
@@ -108,7 +111,6 @@ func (m viewportModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "q", "ctrl+c":
 			return m, tea.Quit
 		case "esc":
-			m.viewport.Height += m.helpViewport.Height
 			m.mode = browsing
 			return m, nil
 		case "enter":
@@ -116,18 +118,20 @@ func (m viewportModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				i, ok := m.list.SelectedItem().(item)
 				if ok {
 					noteInfos := m.noteInfos[i.id]
-					notes := []note{}
+					notes := []note.Note{}
 					for _, noteInfo := range noteInfos {
 						notes = append(notes, m.notes[noteInfo.index])
 					}
-					n, err := renderNote(notes, m.viewport)
-					if err != nil {
-						panic(err)
-					}
-					m.viewport.SetContent(n)
-					m.helpViewport.SetContent(helpView())
-					m.viewport.Height -= m.helpViewport.Height
+
 					m.mode = viewing
+
+					m.noteViewer.SetHeight(m.viewport.Height)
+					m.noteViewer.SetWidth(m.viewport.Width)
+					revisions := []note.Note{}
+					for _, no:= range notes {
+						revisions = append(revisions, note.New(no.Id(), no.Title(), no.Body(), no.Tags()))
+					}
+					m.noteViewer.SetRevisions(revisions)
 					return m, nil
 				}
 				return m, tea.Quit
@@ -166,16 +170,16 @@ func (m viewportModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m viewportModel) View() string {
-	if m.mode == browsing {
-		m.viewport.SetContent(pageStyle.Render(m.list.View()))
-	} else if m.mode == creating {
-		m.viewport.SetContent(pageStyle.Render(m.newNote.View()))
+	if m.mode == viewing {
+		m.viewport.SetContent(pageStyle.Render(m.noteViewer.View()))
 	}
 
-	if m.mode == viewing {
+	if m.mode == browsing {
+		m.viewport.SetContent(pageStyle.Render(m.list.View()))
+	}
 
-		m.helpViewport.SetContent(helpView())
-		return mainStyle.Render(m.viewport.View() + "\n" + m.helpViewport.View())
+	if m.mode == creating {
+		m.viewport.SetContent(pageStyle.Render(m.newNote.View()))
 	}
 
 	return mainStyle.Render(m.viewport.View())
@@ -199,8 +203,8 @@ func loadItems() []list.Item {
 	for i := range slices.Backward(notes) {
 		note := notes[i]
 
-		if i == noteInfos[note.id][len(noteInfos[note.id]) - 1].index {
-			itm := item{id: note.id, title: note.title, content: note.body, tags: note.tags}
+		if i == noteInfos[note.Id()][len(noteInfos[note.Id()]) - 1].index {
+			itm := item{id: note.Id(), title: note.Title(), content: note.Body(), tags: note.Tags()}
 			items = append(items, itm)
 		}
 	}
@@ -208,14 +212,8 @@ func loadItems() []list.Item {
 	return items
 }
 
-type note struct {
-	id string
-	title string
-	body string
-	tags []string
-}
-func loadNotes() []note {
-	items := []note{}
+func loadNotes() []note.Note {
+	items := []note.Note{}
 
 	notes := strings.SplitSeq(ReadFile(os.Args[1]), "\n---\n")
 
@@ -223,15 +221,20 @@ func loadNotes() []note {
 		parts := strings.SplitN(n, "\n", 2)
 		title := parts[0]
 		body := parts[1]
-		itm := note{title:title, body:body}
+
+		var id string
+		var tags []string
 
 		metadata := getMetadata(n)
-		if id, ok := metadata["id"]; ok {
-			itm.id = id
+		if i, ok := metadata["id"]; ok {
+			id = i
 		}
-		if tags, ok := metadata["tags"]; ok {
-			itm.tags = strings.Split(tags, ",")
+		if t, ok := metadata["tags"]; ok {
+			tags = strings.Split(t, ",")
 		}
+
+		itm := note.New(id, title, body, tags)
+
 		items = append(items, itm)
 	}
 
@@ -241,15 +244,15 @@ func loadNotes() []note {
 type noteInfo struct {
 	index int
 }
-func makeNoteInfos(notes []note) map[string][]noteInfo{
+func makeNoteInfos(notes []note.Note) map[string][]noteInfo{
 	m := make(map[string][]noteInfo)
 
 	for index, n := range notes {
-		if _, ok := m[n.id]; !ok {
-			m[n.id] = []noteInfo{}
+		if _, ok := m[n.Id()]; !ok {
+			m[n.Id()] = []noteInfo{}
 		}
 
-		m[n.id] = append(m[n.id], noteInfo{ index: index })
+		m[n.Id()] = append(m[n.Id()], noteInfo{ index: index })
 	}
 
 	return m
@@ -262,7 +265,14 @@ func main() {
 	notes := loadNotes()
 	noteInfos := makeNoteInfos(notes)
 
-	p := tea.NewProgram(&viewportModel{ viewport: vp, list: l, helpViewport: viewport.New(0, 1), notes: notes, noteInfos: noteInfos }, tea.WithAltScreen())
+	p := tea.NewProgram(&viewportModel{
+		viewport: vp,
+		list: l,
+		noteViewer: viewer.New(),
+		helpViewport: viewport.New(0, 1),
+		notes: notes,
+		noteInfos: noteInfos,
+	}, tea.WithAltScreen())
 
 	if _, err := p.Run(); err != nil {
 		panic(err)
