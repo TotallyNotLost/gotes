@@ -89,6 +89,7 @@ func (m viewportModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "q", "ctrl+c":
 			return m, tea.Quit
 		case "esc":
+			m.viewport.Height += m.helpViewport.Height
 			m.mode = browsing
 			return m, nil
 		case "enter":
