@@ -95,7 +95,6 @@ func (m viewportModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.mode == browsing {
 				i, ok := m.list.SelectedItem().(item)
 				if ok {
-					// e, _ := newExample(i)
 					n, err := renderNote(i, m.viewport)
 					if err != nil {
 						panic(err)
