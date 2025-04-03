@@ -13,7 +13,7 @@ import "slices"
 import "strings"
 
 type item struct {
-	id, title, content, desc string
+	id, title string; content string; tags []string
 }
 
 type mode int
@@ -25,7 +25,7 @@ const (
 )
 
 func (i item) Title() string       { return i.title }
-func (i item) Description() string { return i.desc }
+func (i item) Description() string { return strings.Join(i.tags, ",") }
 func (i item) FilterValue() string { return i.title }
 
 var mainStyle = lipgloss.NewStyle().
@@ -82,7 +82,7 @@ func (m viewportModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					f.WriteString("\n[_metadata_:tags]:# \"" + tags + "\"")
 				}
 
-				m.list.SetItems(loadNotes())
+				m.list.SetItems(loadItems())
 				m.mode = browsing
 				return m, nil
 			}
@@ -125,7 +125,7 @@ func (m viewportModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			i, ok := m.list.SelectedItem().(item)
 			if ok {
 				m.newNote, _ = newNote(&m.viewport, i.id)
-				m.newNote.textarea.SetValue(strings.TrimSpace(removeMetadata(i.content)))
+				m.newNote.textarea.SetValue(i.title + "\n\n" + strings.TrimSpace(removeMetadata(i.content)))
 				metadata := getMetadata(i.content)
 				if tags, ok := metadata["tags"]; ok {
 					m.newNote.tagsInput.SetValue(tags)
@@ -141,7 +141,8 @@ func (m viewportModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, cmd
 		}
 	case tea.WindowSizeMsg:
-		m.viewport.Height = msg.Height - 10
+		m.viewport.Height = msg.Height - 2
+		m.viewport.Width = msg.Width - 10
 		if m.mode == browsing {
 			m.list.SetSize(m.viewport.Width, m.viewport.Height)
 		}
@@ -166,7 +167,7 @@ func (m viewportModel) View() string {
 }
 
 func newList() list.Model {
-	items := loadNotes()
+	items := loadItems()
 
 	l := list.New(items, list.NewDefaultDelegate(), 0, 0)
 	l.Title = os.Args[1]
@@ -174,22 +175,43 @@ func newList() list.Model {
 	return l
 }
 
-func loadNotes() []list.Item {
+func loadItems() []list.Item {
 	items := []list.Item{}
 
-	notes := strings.Split(ReadFile(os.Args[1]), "\n---\n")
+	notes := loadNotes()
 
 	for i := range slices.Backward(notes) {
 		note := notes[i]
-		title := strings.Split(note, "\n")[0]
-		metadata := getMetadata(note)
-		var itm item
-		itm = item{title: title, content: note}
+		itm := item{id: note.id, title: note.title, content: note.body, tags: note.tags}
+		items = append(items, itm)
+	}
+
+	return items
+}
+
+type note struct {
+	id string
+	title string
+	body string
+	tags []string
+}
+func loadNotes() []note {
+	items := []note{}
+
+	notes := strings.SplitSeq(ReadFile(os.Args[1]), "\n---\n")
+
+	for n := range notes {
+		parts := strings.SplitN(n, "\n", 2)
+		title := parts[0]
+		body := parts[1]
+		itm := note{title:title, body:body}
+
+		metadata := getMetadata(n)
 		if id, ok := metadata["id"]; ok {
 			itm.id = id
 		}
 		if tags, ok := metadata["tags"]; ok {
-			itm.desc = tags
+			itm.tags = strings.Split(tags, ",")
 		}
 		items = append(items, itm)
 	}
@@ -198,13 +220,11 @@ func loadNotes() []list.Item {
 }
 
 func main() {
-	const width = 78
-
-	vp := viewport.New(width, 40)
+	vp := viewport.New(0, 0)
 
 	l := newList()
 
-	p := tea.NewProgram(&viewportModel{ viewport: vp, list: l, helpViewport: viewport.New(width, 1) }, tea.WithAltScreen())
+	p := tea.NewProgram(&viewportModel{ viewport: vp, list: l, helpViewport: viewport.New(0, 1) }, tea.WithAltScreen())
 
 	if _, err := p.Run(); err != nil {
 		panic(err)

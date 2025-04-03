@@ -31,6 +31,6 @@ func renderNote(i item, vp viewport.Model) (string, error) {
 		return "", err
 	}
 
-	return renderer.Render(i.content)
+	return renderer.Render("# " + i.title + "\n" + i.content)
 }
 
