@@ -13,7 +13,7 @@ import "slices"
 import "strings"
 
 type item struct {
-	id, title string; content string; tags []string
+	id, title, content string; tags []string
 }
 
 type mode int
@@ -41,6 +41,7 @@ type viewportModel struct {
 	newNote *newNoteModel
 	mode mode
 	helpViewport viewport.Model
+	noteInfos map[string][]noteInfo
 }
 
 func (model viewportModel) Init() tea.Cmd {
@@ -83,6 +84,7 @@ func (m viewportModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 
 				m.list.SetItems(loadItems())
+				m.noteInfos = makeNoteInfos(loadNotes())
 				m.mode = browsing
 				return m, nil
 			}
@@ -185,11 +187,15 @@ func loadItems() []list.Item {
 	items := []list.Item{}
 
 	notes := loadNotes()
+	noteInfos := makeNoteInfos(notes)
 
 	for i := range slices.Backward(notes) {
 		note := notes[i]
-		itm := item{id: note.id, title: note.title, content: note.body, tags: note.tags}
-		items = append(items, itm)
+
+		if i == noteInfos[note.id][len(noteInfos[note.id]) - 1].index {
+			itm := item{id: note.id, title: note.title, content: note.body, tags: note.tags}
+			items = append(items, itm)
+		}
 	}
 
 	return items
@@ -225,12 +231,30 @@ func loadNotes() []note {
 	return items
 }
 
+type noteInfo struct {
+	index int
+}
+func makeNoteInfos(notes []note) map[string][]noteInfo{
+	m := make(map[string][]noteInfo)
+
+	for index, n := range notes {
+		if _, ok := m[n.id]; !ok {
+			m[n.id] = []noteInfo{}
+		}
+
+		m[n.id] = append(m[n.id], noteInfo{ index: index })
+	}
+
+	return m
+}
+
 func main() {
 	vp := viewport.New(0, 0)
 
 	l := newList()
+	noteInfos := makeNoteInfos(loadNotes())
 
-	p := tea.NewProgram(&viewportModel{ viewport: vp, list: l, helpViewport: viewport.New(0, 1) }, tea.WithAltScreen())
+	p := tea.NewProgram(&viewportModel{ viewport: vp, list: l, helpViewport: viewport.New(0, 1), noteInfos: noteInfos }, tea.WithAltScreen())
 
 	if _, err := p.Run(); err != nil {
 		panic(err)
