@@ -111,6 +111,17 @@ func (m viewportModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "n":
 			m.newNote, _ = newNote()
 			m.mode = creating
+		case "e":
+			i, ok := m.list.SelectedItem().(item)
+			if ok {
+				m.newNote, _ = newNote()
+				m.newNote.textarea.SetValue(i.content)
+				metadata := getMetadata(i.content)
+				if tags, ok := metadata["tags"]; ok {
+					m.newNote.tagsInput.SetValue(tags)
+				}
+				m.mode = creating
+			}
 		default:
 			if m.mode == viewing {
 				m.viewport, cmd = m.viewport.Update(msg)
