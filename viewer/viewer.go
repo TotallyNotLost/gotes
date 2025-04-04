@@ -1,7 +1,10 @@
 package viewer
 
 import (
+	"os"
+	"regexp"
 	"strconv"
+	"strings"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/glamour"
 	"github.com/charmbracelet/lipgloss"
@@ -35,7 +38,8 @@ func (m *Model) SetWidth(width int) {
 func (m *Model) SetRevisions(revisions []note.Note) {
 	m.revisions = revisions
 	tabs := lo.Map(m.revisions, func(revision note.Note, i int) tabs.Tab {
-		md, _ := glamour.Render(revision.Body(), "dark")
+		body := expandIncludes(revision.Body())
+		md, _ := glamour.Render(body, "dark")
 		title := "Revision HEAD~" + strconv.Itoa(i)
 		if i == 0 {
 			title += " (latest)"
@@ -63,6 +67,19 @@ func (m Model) View() string {
 	}
 
 	return title + m.tabs.View() + helpView()
+}
+
+func expandIncludes(md string) string {
+	r, _ := regexp.Compile("\\[_metadata_:include\\]:# \"([^\"]*)\"")
+
+	return r.ReplaceAllStringFunc(md, func(incl string) string {
+		file := r.FindStringSubmatch(incl)[1]
+		b, err := os.ReadFile(file)
+		if err != nil {
+			panic(err)
+		}
+		return strings.TrimSpace(string(b))
+	})
 }
 
 func renderTitle(note note.Note) string {
