@@ -149,7 +149,7 @@ func (m viewportModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			i, ok := m.list.SelectedItem().(item)
 			if ok {
 				m.newNote, _ = newNote(&m.viewport, i.id)
-				m.newNote.textarea.SetValue(i.title + "\n\n" + strings.TrimSpace(removeMetadata(i.content)))
+				m.newNote.textarea.SetValue(i.title + "\n\n" + strings.TrimSpace(removeMetadata(removeMetadata(i.content, "id"), "tags")))
 				metadata := getMetadata(i.content)
 				if tags, ok := metadata["tags"]; ok {
 					m.newNote.tagsInput.SetValue(tags)
@@ -325,14 +325,10 @@ func getMetadata(text string) map[string]string {
 	return o
 }
 
-func removeMetadata(text string) string {
-	lines := strings.Split(text, "\n")
+func removeMetadata(md string, key string) string {
+	r, _ := regexp.Compile("\\[_metadata_:" + key + "\\]:# \"[^\"]*\"")
 
-	filtered := lo.Filter(lines, func(line string, index int) bool {
-		return !isMetadata(line)
-	})
-
-	return strings.Join(filtered, "\n")
+	return r.ReplaceAllString(md, "")
 }
 
 func isMetadata(text string) bool {
