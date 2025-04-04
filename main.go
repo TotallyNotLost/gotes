@@ -55,6 +55,11 @@ func (model viewportModel) Init() tea.Cmd {
 func (m viewportModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 
+	if m.mode == viewing {
+		m.noteViewer, cmd = m.noteViewer.Update(msg)
+		return m, cmd
+	}
+
 	if m.mode == creating {
 		switch msg := msg.(type) {
 		case tea.KeyMsg:
@@ -128,7 +133,7 @@ func (m viewportModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.noteViewer.SetHeight(m.viewport.Height)
 					m.noteViewer.SetWidth(m.viewport.Width)
 					revisions := []note.Note{}
-					for _, no:= range notes {
+					for _, no:= range slices.Backward(notes) {
 						revisions = append(revisions, note.New(no.Id(), no.Title(), no.Body(), no.Tags()))
 					}
 					m.noteViewer.SetRevisions(revisions)
