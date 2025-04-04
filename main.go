@@ -209,7 +209,8 @@ func loadItems() []list.Item {
 	for i := range slices.Backward(notes) {
 		note := notes[i]
 
-		if i == noteInfos[note.Id()][len(noteInfos[note.Id()]) - 1].index {
+		isLatestRevision := i == noteInfos[note.Id()][len(noteInfos[note.Id()]) - 1].index
+		if isLatestRevision && !lo.Contains(note.Tags(), "Done") {
 			itm := item{id: note.Id(), title: note.Title(), content: note.Body(), tags: note.Tags()}
 			items = append(items, itm)
 		}

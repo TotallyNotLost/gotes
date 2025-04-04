@@ -56,7 +56,13 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 }
 
 func (m Model) View() string {
-	return renderTitle(lo.LastOrEmpty(m.revisions)) + m.tabs.View() + helpView()
+	title := renderTitle(lo.LastOrEmpty(m.revisions))
+
+	if len(m.revisions) == 1 {
+		return title + m.tabs.GetTabs()[0].GetBody() + helpView()
+	}
+
+	return title + m.tabs.View() + helpView()
 }
 
 func renderTitle(note note.Note) string {

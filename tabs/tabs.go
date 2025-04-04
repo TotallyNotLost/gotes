@@ -46,6 +46,10 @@ func (m *Model) SetWidth(width int) {
 	m.width = width - 4
 }
 
+func (m Model) GetTabs() []Tab {
+	return m.tabs
+}
+
 func (m *Model) SetTabs(tabs []Tab) {
 	m.tabs = tabs
 }
@@ -116,4 +120,8 @@ func NewTab(title string, body string) Tab {
 type Tab struct {
 	title string
 	body string
+}
+
+func (t Tab) GetBody() string {
+	return t.body
 }
