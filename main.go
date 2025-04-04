@@ -55,6 +55,17 @@ func (model viewportModel) Init() tea.Cmd {
 func (m viewportModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch msg.String() {
+		case "q", "ctrl+c":
+			return m, tea.Quit
+		case "esc":
+			m.mode = browsing
+			return m, nil
+		}
+	}
+
 	if m.mode == viewing {
 		m.noteViewer, cmd = m.noteViewer.Update(msg)
 		return m, cmd
@@ -63,11 +74,6 @@ func (m viewportModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if m.mode == creating {
 		switch msg := msg.(type) {
 		case tea.KeyMsg:
-			if msg.String() == "esc" {
-				m.mode = browsing
-				return m, nil
-			}
-
 			if msg.String() == "enter" && m.newNote.state == writingTags {
 				f, err := os.OpenFile(os.Args[1], os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
 				if err != nil {
@@ -113,11 +119,6 @@ func (m viewportModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, cmd
 		}
 		switch msg.String() {
-		case "q", "ctrl+c":
-			return m, tea.Quit
-		case "esc":
-			m.mode = browsing
-			return m, nil
 		case "enter":
 			if m.mode == browsing {
 				i, ok := m.list.SelectedItem().(item)

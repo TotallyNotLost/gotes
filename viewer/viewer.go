@@ -1,8 +1,8 @@
 package viewer
 
 import (
+	"strconv"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/bubbles/viewport"
 	"github.com/charmbracelet/glamour"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/samber/lo"
@@ -13,15 +13,10 @@ import (
 var helpStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("241")).Render
 
 func New() Model {
-	vp := viewport.New(0, 0)
-
-	return Model{
-		viewport: vp,
-	}
+	return Model{}
 }
 
 type Model struct {
-	viewport viewport.Model
 	tabs tabs.Model
 	revisions []note.Note
 	activeRevision int
@@ -29,12 +24,11 @@ type Model struct {
 
 func (m *Model) SetHeight(height int) {
 	// Subtract 1 to account for helpView()
-	m.viewport.Height = height - 1
-	m.tabs.SetHeight(height - 1)
+	// and an additional 3 to account for the title at the top
+	m.tabs.SetHeight(height - 4)
 }
 
 func (m *Model) SetWidth(width int) {
-	m.viewport.Width = width
 	m.tabs.SetWidth(width)
 }
 
@@ -42,7 +36,11 @@ func (m *Model) SetRevisions(revisions []note.Note) {
 	m.revisions = revisions
 	tabs := lo.Map(m.revisions, func(revision note.Note, i int) tabs.Tab {
 		md, _ := glamour.Render(revision.Body(), "dark")
-		return tabs.NewTab(revision.Title(), md)
+		title := "Revision HEAD~" + strconv.Itoa(i)
+		if i == 0 {
+			title += " (latest)"
+		}
+		return tabs.NewTab(title, md)
 	})
 	m.tabs.SetTabs(tabs)
 }
@@ -58,16 +56,12 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 }
 
 func (m Model) View() string {
-	// m.viewport.SetContent(renderNote(latest))
-
-	// return m.viewport.View() + helpView()
-	return m.tabs.View() + helpView()
+	return renderTitle(lo.LastOrEmpty(m.revisions)) + m.tabs.View() + helpView()
 }
 
-func renderNote(note note.Note) string {
-	heading := "# " + note.Title()
-	markdown := heading + "\n" + note.Body()
-	out, _ := glamour.Render(markdown, "dark")
+func renderTitle(note note.Note) string {
+	md := "# " + note.Title()
+	out, _ := glamour.Render(md, "dark")
 
 	return out
 }
