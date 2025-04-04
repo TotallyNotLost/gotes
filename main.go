@@ -135,7 +135,7 @@ func (m viewportModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.noteViewer.SetWidth(m.viewport.Width)
 					revisions := []note.Note{}
 					for _, no:= range slices.Backward(notes) {
-						revisions = append(revisions, note.New(no.Id(), no.Title(), no.Body(), no.Tags()))
+						revisions = append(revisions, no)
 					}
 					m.noteViewer.SetRevisions(revisions)
 					return m, nil
@@ -176,17 +176,18 @@ func (m viewportModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m viewportModel) View() string {
-	if m.mode == viewing {
-		m.viewport.SetContent(pageStyle.Render(m.noteViewer.View()))
+	var view string
+
+	switch m.mode {
+	case viewing:
+		view = m.noteViewer.View()
+	case browsing:
+		view = m.list.View()
+	case creating:
+		view = m.newNote.View()
 	}
 
-	if m.mode == browsing {
-		m.viewport.SetContent(pageStyle.Render(m.list.View()))
-	}
-
-	if m.mode == creating {
-		m.viewport.SetContent(pageStyle.Render(m.newNote.View()))
-	}
+	m.viewport.SetContent(pageStyle.Render(view))
 
 	return mainStyle.Render(m.viewport.View())
 }
