@@ -1,18 +1,18 @@
 package markdown
 
 type Entry struct {
-	id string
+	id    string
 	title string
-	body string
-	tags []string
+	body  string
+	tags  []string
 }
 
 func NewEntry(id string, title string, body string, tags []string) Entry {
 	return Entry{
-		id: id,
+		id:    id,
 		title: title,
-		body: body,
-		tags: tags,
+		body:  body,
+		tags:  tags,
 	}
 }
 
