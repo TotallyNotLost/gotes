@@ -7,7 +7,7 @@ type Entry struct {
 	tags []string
 }
 
-func New(id string, title string, body string, tags []string) Entry {
+func NewEntry(id string, title string, body string, tags []string) Entry {
 	return Entry{
 		id: id,
 		title: title,

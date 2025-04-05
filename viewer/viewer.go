@@ -11,7 +11,6 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/samber/lo"
 	"github.com/TotallyNotLost/gotes/markdown"
-	"github.com/TotallyNotLost/gotes/note"
 	"github.com/TotallyNotLost/gotes/tabs"
 )
 
@@ -23,7 +22,7 @@ func New() Model {
 
 type Model struct {
 	tabs tabs.Model
-	revisions []note.Note
+	revisions []markdown.Entry
 	activeRevision int
 	// The source file that the notes come from.
 	// This is necessary in case the notes want to
@@ -41,9 +40,9 @@ func (m *Model) SetWidth(width int) {
 	m.tabs.SetWidth(width)
 }
 
-func (m *Model) SetRevisions(revisions []note.Note) {
+func (m *Model) SetRevisions(revisions []markdown.Entry) {
 	m.revisions = revisions
-	tabs := lo.Map(m.revisions, func(revision note.Note, i int) tabs.Tab {
+	tabs := lo.Map(m.revisions, func(revision markdown.Entry, i int) tabs.Tab {
 		body := m.expandIncludes(revision.Body())
 		md, _ := glamour.Render(body, "dark")
 		title := "Revision HEAD~" + strconv.Itoa(i)
@@ -165,7 +164,7 @@ func (m Model) normalizeInclSelector(selector string) string {
 	return fmt.Sprintf("%s-%s", selector, selector)
 }
 
-func renderTitle(note note.Note) string {
+func renderTitle(note markdown.Entry) string {
 	md := "# " + note.Title()
 	out, _ := glamour.Render(md, "dark")
 

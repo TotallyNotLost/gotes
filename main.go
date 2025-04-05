@@ -8,7 +8,6 @@ import "github.com/charmbracelet/lipgloss"
 import "github.com/google/uuid"
 import "github.com/samber/lo"
 import "github.com/TotallyNotLost/gotes/markdown"
-import "github.com/TotallyNotLost/gotes/note"
 import "github.com/TotallyNotLost/gotes/viewer"
 import "log"
 import "regexp"
@@ -45,7 +44,7 @@ type viewportModel struct {
 	newNote *newNoteModel
 	mode mode
 	helpViewport viewport.Model
-	notes []note.Note
+	notes []markdown.Entry
 	noteInfos map[string][]noteInfo
 }
 
@@ -99,8 +98,8 @@ func (m viewportModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					f.WriteString("\n[_metadata_:tags]:# \"" + tags + "\"")
 				}
 
-				m.list.SetItems(loadItems())
-				m.notes = loadNotes()
+				m.notes = loadEntries()
+				m.list.SetItems(loadItems(m.notes))
 				m.noteInfos = makeNoteInfos(m.notes)
 				m.mode = browsing
 				return m, nil
@@ -125,7 +124,7 @@ func (m viewportModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				i, ok := m.list.SelectedItem().(item)
 				if ok {
 					noteInfos := m.noteInfos[i.id]
-					notes := []note.Note{}
+					notes := []markdown.Entry{}
 					for _, noteInfo := range noteInfos {
 						notes = append(notes, m.notes[noteInfo.index])
 					}
@@ -135,7 +134,7 @@ func (m viewportModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.noteViewer.SetFile(os.Args[1])
 					m.noteViewer.SetHeight(m.viewport.Height)
 					m.noteViewer.SetWidth(m.viewport.Width)
-					revisions := []note.Note{}
+					revisions := []markdown.Entry{}
 					for _, no:= range slices.Backward(notes) {
 						revisions = append(revisions, no)
 					}
@@ -194,8 +193,8 @@ func (m viewportModel) View() string {
 	return mainStyle.Render(m.viewport.View())
 }
 
-func newList() list.Model {
-	items := loadItems()
+func newList(notes []markdown.Entry) list.Model {
+	items := loadItems(notes)
 
 	l := list.New(items, list.NewDefaultDelegate(), 0, 0)
 	l.Title = os.Args[1]
@@ -203,10 +202,9 @@ func newList() list.Model {
 	return l
 }
 
-func loadItems() []list.Item {
+func loadItems(notes []markdown.Entry) []list.Item {
 	items := []list.Item{}
 
-	notes := loadNotes()
 	noteInfos := makeNoteInfos(notes)
 
 	for i := range slices.Backward(notes) {
@@ -222,8 +220,8 @@ func loadItems() []list.Item {
 	return items
 }
 
-func loadNotes() []note.Note {
-	items := []note.Note{}
+func loadEntries() []markdown.Entry {
+	items := []markdown.Entry{}
 
 	notes := strings.SplitSeq(ReadFile(os.Args[1]), "\n---\n")
 
@@ -243,7 +241,7 @@ func loadNotes() []note.Note {
 			tags = strings.Split(t, ",")
 		}
 
-		itm := note.New(id, title, body, tags)
+		itm := markdown.NewEntry(id, title, body, tags)
 
 		items = append(items, itm)
 	}
@@ -254,7 +252,7 @@ func loadNotes() []note.Note {
 type noteInfo struct {
 	index int
 }
-func makeNoteInfos(notes []note.Note) map[string][]noteInfo{
+func makeNoteInfos(notes []markdown.Entry) map[string][]noteInfo{
 	m := make(map[string][]noteInfo)
 
 	for index, n := range notes {
@@ -271,8 +269,8 @@ func makeNoteInfos(notes []note.Note) map[string][]noteInfo{
 func main() {
 	vp := viewport.New(0, 0)
 
-	l := newList()
-	notes := loadNotes()
+	notes := loadEntries()
+	l := newList(notes)
 	noteInfos := makeNoteInfos(notes)
 
 	p := tea.NewProgram(&viewportModel{
