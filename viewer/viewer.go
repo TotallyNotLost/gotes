@@ -1,6 +1,7 @@
 package viewer
 
 import (
+	"fmt"
 	"os"
 	"regexp"
 	"strconv"
@@ -9,6 +10,7 @@ import (
 	"github.com/charmbracelet/glamour"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/samber/lo"
+	"github.com/TotallyNotLost/gotes/markdown"
 	"github.com/TotallyNotLost/gotes/note"
 	"github.com/TotallyNotLost/gotes/tabs"
 )
@@ -23,6 +25,10 @@ type Model struct {
 	tabs tabs.Model
 	revisions []note.Note
 	activeRevision int
+	// The source file that the notes come from.
+	// This is necessary in case the notes want to
+	// reference/include other notes or lines in the file.
+	file string
 }
 
 func (m *Model) SetHeight(height int) {
@@ -38,7 +44,7 @@ func (m *Model) SetWidth(width int) {
 func (m *Model) SetRevisions(revisions []note.Note) {
 	m.revisions = revisions
 	tabs := lo.Map(m.revisions, func(revision note.Note, i int) tabs.Tab {
-		body := expandIncludes(revision.Body())
+		body := m.expandIncludes(revision.Body())
 		md, _ := glamour.Render(body, "dark")
 		title := "Revision HEAD~" + strconv.Itoa(i)
 		if i == 0 {
@@ -47,6 +53,10 @@ func (m *Model) SetRevisions(revisions []note.Note) {
 		return tabs.NewTab(title, md)
 	})
 	m.tabs.SetTabs(tabs)
+}
+
+func (m *Model) SetFile(file string) {
+	m.file = file
 }
 
 func (m Model) Init() tea.Cmd {
@@ -69,17 +79,90 @@ func (m Model) View() string {
 	return title + m.tabs.View() + helpView()
 }
 
-func expandIncludes(md string) string {
+func (m Model) expandIncludes(md string) string {
 	r, _ := regexp.Compile("\\[_metadata_:include\\]:# \"([^\"]*)\"")
 
-	return r.ReplaceAllStringFunc(md, func(incl string) string {
-		file := r.FindStringSubmatch(incl)[1]
+	return r.ReplaceAllStringFunc(md, func(metadata string) string {
+		incl := m.normalizeIncl(r.FindStringSubmatch(metadata)[1])
+
+		parts := strings.SplitN(incl, ":", 2)
+		file := parts[0]
+
 		b, err := os.ReadFile(file)
 		if err != nil {
-			panic(err)
+			return fmt.Sprintf("{Error loading file \"%s\"}", incl)
 		}
-		return strings.TrimSpace(string(b))
+
+		selector := parts[1]
+
+		if selector == "" {
+			return strings.TrimSpace(string(b))
+		}
+
+		if strings.HasPrefix(selector, "#") {
+			id := strings.TrimLeft(selector, "#")
+			return markdown.GetEntry(string(b), id)
+		}
+
+		rng := strings.Split(selector, "-")
+		start, _ := strconv.Atoi(rng[0])
+		end, _ := strconv.Atoi(rng[1])
+
+		lines := strings.Split(string(b), "\n")
+		return strings.Join(lines[start:end], "\n")
 	})
+}
+
+// Take the include and add optional parts.
+// This will make it easier to parse/handle elsewhere.
+//
+// Normalized format:
+// [file-path]:[selector]
+func (m Model) normalizeIncl(incl string) string {
+	var (file, selector string)
+
+	selreg, _ := regexp.Compile("(^#.+$)|(^\\d+(-\\d+)?$)")
+
+	if strings.Contains(incl, ":") {
+		parts := strings.SplitN(incl, ":", 2)
+		file = parts[0]
+		selector = parts[1]
+	} else if selreg.MatchString(incl) {
+		file = m.file
+		selector = incl
+	} else {
+		file = incl
+		selector = ""
+	}
+
+	return fmt.Sprintf("%s:%s", m.normalizeInclFile(file), m.normalizeInclSelector(selector))
+}
+
+func (m Model) normalizeInclFile(file string) string {
+	if file != "" {
+		return file
+	}
+
+	return m.file
+}
+
+// Normalizes selector so that it fits one of these formats:
+//
+// 1. <empty> - Return the entire contents of the file.
+// 2. #{id} -> The ID of a note within the file.
+// 3. {start}-{end} -> Line numbers to include. Start is inclusive, end is exclusive.
+func (m Model) normalizeInclSelector(selector string) string {
+	if selector == "" {
+		return selector
+	}
+
+	r, _ := regexp.Compile("^(#.+)|(\\d+-\\d+)$")
+
+	if r.MatchString(selector) {
+		return selector
+	}
+
+	return fmt.Sprintf("%s-%s", selector, selector)
 }
 
 func renderTitle(note note.Note) string {

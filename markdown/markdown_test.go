@@ -1,10 +1,10 @@
-package main
+package markdown
 
 import "reflect"
 import "testing"
 
-func TestSplitNotes(t *testing.T) {
-	got := SplitNotes("Hello---World")
+func TestSplitEntries(t *testing.T) {
+	got := SplitEntries("Hello---World")
 	want := []string{"Hello", "World"}
 
 	if !reflect.DeepEqual(want, got) {
@@ -12,8 +12,8 @@ func TestSplitNotes(t *testing.T) {
 	}
 }
 
-func TestSplitNotesTrimsWhitespace(t *testing.T) {
-	got := SplitNotes("\n \nHello, there \n --- \n World\n \n")
+func TestSplitEntriesTrimsWhitespace(t *testing.T) {
+	got := SplitEntries("\n \nHello, there \n --- \n World\n \n")
 	want := []string{"Hello, there", "World"}
 
 	if !reflect.DeepEqual(want, got) {

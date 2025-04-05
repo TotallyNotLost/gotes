@@ -7,6 +7,7 @@ import "github.com/charmbracelet/bubbles/viewport"
 import "github.com/charmbracelet/lipgloss"
 import "github.com/google/uuid"
 import "github.com/samber/lo"
+import "github.com/TotallyNotLost/gotes/markdown"
 import "github.com/TotallyNotLost/gotes/note"
 import "github.com/TotallyNotLost/gotes/viewer"
 import "log"
@@ -131,6 +132,7 @@ func (m viewportModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 					m.mode = viewing
 
+					m.noteViewer.SetFile(os.Args[1])
 					m.noteViewer.SetHeight(m.viewport.Height)
 					m.noteViewer.SetWidth(m.viewport.Width)
 					revisions := []note.Note{}
@@ -150,7 +152,7 @@ func (m viewportModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if ok {
 				m.newNote, _ = newNote(&m.viewport, i.id)
 				m.newNote.textarea.SetValue(i.title + "\n\n" + strings.TrimSpace(removeMetadata(removeMetadata(i.content, "id"), "tags")))
-				metadata := getMetadata(i.content)
+				metadata := markdown.GetMetadata(i.content)
 				if tags, ok := metadata["tags"]; ok {
 					m.newNote.tagsInput.SetValue(tags)
 				}
@@ -233,7 +235,7 @@ func loadNotes() []note.Note {
 		var id string
 		var tags []string
 
-		metadata := getMetadata(n)
+		metadata := markdown.GetMetadata(n)
 		if i, ok := metadata["id"]; ok {
 			id = i
 		}
@@ -296,43 +298,9 @@ func ReadFile(file string) string {
 	return string(b)
 }
 
-func SplitNotes(text string) []string {
-	notes := strings.Split(text, "---")
-
-	for index, note := range notes {
-		notes[index] = strings.TrimSpace(note)
-	}
-
-	return notes
-}
-
-func getMetadata(text string) map[string]string {
-	lines := strings.Split(text, "\n")
-
-	metaLines := lo.Filter(lines, func(line string, index int) bool {
-		return isMetadata(line)
-	})
-
-	o := make(map[string]string)
-
-	for _, ml := range metaLines {
-		r, _ := regexp.Compile("^\\[_metadata_:*(\\w+)\\]:# \"(.*)\"$")
-		key := r.FindStringSubmatch(ml)[1]
-		value := r.FindStringSubmatch(ml)[2]
-		o[key] = value
-	}
-
-	return o
-}
-
 func removeMetadata(md string, key string) string {
 	r, _ := regexp.Compile("\\[_metadata_:" + key + "\\]:# \"[^\"]*\"")
 
 	return r.ReplaceAllString(md, "")
 }
 
-func isMetadata(text string) bool {
-	r, _ := regexp.Compile("^\\[_metadata_:\\w+\\]:# \".*\"$")
-
-	return r.MatchString(text)
-}
