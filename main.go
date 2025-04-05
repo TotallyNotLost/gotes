@@ -15,15 +15,16 @@ import "slices"
 import "strings"
 
 type item struct {
-	id, title, content string; tags []string
+	id, title, content string
+	tags               []string
 }
 
 type mode int
 
 const (
 	browsing mode = 0
-	viewing = 1
-	creating = 2
+	viewing       = 1
+	creating      = 2
 )
 
 func (i item) Title() string       { return i.title }
@@ -31,21 +32,21 @@ func (i item) Description() string { return strings.Join(i.tags, ",") }
 func (i item) FilterValue() string { return i.title + " " + i.Description() }
 
 var mainStyle = lipgloss.NewStyle().
-		MarginLeft(2).
-		BorderStyle(lipgloss.RoundedBorder()).
-		BorderForeground(lipgloss.Color("62")).
-		PaddingRight(2)
+	MarginLeft(2).
+	BorderStyle(lipgloss.RoundedBorder()).
+	BorderForeground(lipgloss.Color("62")).
+	PaddingRight(2)
 var pageStyle = lipgloss.NewStyle()
 
 type viewportModel struct {
-	viewport viewport.Model
-	list list.Model
-	noteViewer viewer.Model
-	newNote *newNoteModel
-	mode mode
+	viewport     viewport.Model
+	list         list.Model
+	noteViewer   viewer.Model
+	newNote      *newNoteModel
+	mode         mode
 	helpViewport viewport.Model
-	notes []markdown.Entry
-	noteInfos map[string][]noteInfo
+	notes        []markdown.Entry
+	noteInfos    map[string][]noteInfo
 }
 
 func (model viewportModel) Init() tea.Cmd {
@@ -135,7 +136,7 @@ func (m viewportModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.noteViewer.SetHeight(m.viewport.Height)
 					m.noteViewer.SetWidth(m.viewport.Width)
 					revisions := []markdown.Entry{}
-					for _, no:= range slices.Backward(notes) {
+					for _, no := range slices.Backward(notes) {
 						revisions = append(revisions, no)
 					}
 					m.noteViewer.SetRevisions(revisions)
@@ -210,7 +211,7 @@ func loadItems(notes []markdown.Entry) []list.Item {
 	for i := range slices.Backward(notes) {
 		note := notes[i]
 
-		isLatestRevision := i == noteInfos[note.Id()][len(noteInfos[note.Id()]) - 1].index
+		isLatestRevision := i == noteInfos[note.Id()][len(noteInfos[note.Id()])-1].index
 		if isLatestRevision && !lo.Contains(note.Tags(), "Done") {
 			itm := item{id: note.Id(), title: note.Title(), content: note.Body(), tags: note.Tags()}
 			items = append(items, itm)
@@ -252,7 +253,8 @@ func loadEntries() []markdown.Entry {
 type noteInfo struct {
 	index int
 }
-func makeNoteInfos(notes []markdown.Entry) map[string][]noteInfo{
+
+func makeNoteInfos(notes []markdown.Entry) map[string][]noteInfo {
 	m := make(map[string][]noteInfo)
 
 	for index, n := range notes {
@@ -260,7 +262,7 @@ func makeNoteInfos(notes []markdown.Entry) map[string][]noteInfo{
 			m[n.Id()] = []noteInfo{}
 		}
 
-		m[n.Id()] = append(m[n.Id()], noteInfo{ index: index })
+		m[n.Id()] = append(m[n.Id()], noteInfo{index: index})
 	}
 
 	return m
@@ -274,12 +276,12 @@ func main() {
 	noteInfos := makeNoteInfos(notes)
 
 	p := tea.NewProgram(&viewportModel{
-		viewport: vp,
-		list: l,
-		noteViewer: viewer.New(),
+		viewport:     vp,
+		list:         l,
+		noteViewer:   viewer.New(),
 		helpViewport: viewport.New(0, 1),
-		notes: notes,
-		noteInfos: noteInfos,
+		notes:        notes,
+		noteInfos:    noteInfos,
 	}, tea.WithAltScreen())
 
 	if _, err := p.Run(); err != nil {
@@ -301,4 +303,3 @@ func removeMetadata(md string, key string) string {
 
 	return r.ReplaceAllString(md, "")
 }
-

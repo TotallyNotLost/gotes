@@ -13,7 +13,7 @@ type state int
 
 const (
 	writingNote state = 0
-	writingTags = 1
+	writingTags       = 1
 )
 
 var (
@@ -43,10 +43,10 @@ var (
 )
 
 type newNoteModel struct {
-	textarea textarea.Model
+	textarea  textarea.Model
 	tagsInput textinput.Model
-	id string
-	state state
+	id        string
+	state     state
 }
 
 func (m newNoteModel) Init() tea.Cmd {
@@ -117,10 +117,9 @@ func newNote(vp *viewport.Model, id string) (*newNoteModel, error) {
 	ta.SetWidth(vp.Width)
 
 	return &newNoteModel{
-		textarea: ta,
+		textarea:  ta,
 		tagsInput: ti,
-		id: id,
-		state: writingNote,
+		id:        id,
+		state:     writingNote,
 	}, nil
 }
-

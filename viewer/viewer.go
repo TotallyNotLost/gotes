@@ -2,16 +2,16 @@ package viewer
 
 import (
 	"fmt"
-	"os"
-	"regexp"
-	"strconv"
-	"strings"
+	"github.com/TotallyNotLost/gotes/markdown"
+	"github.com/TotallyNotLost/gotes/tabs"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/glamour"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/samber/lo"
-	"github.com/TotallyNotLost/gotes/markdown"
-	"github.com/TotallyNotLost/gotes/tabs"
+	"os"
+	"regexp"
+	"strconv"
+	"strings"
 )
 
 var helpStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("241")).Render
@@ -21,8 +21,8 @@ func New() Model {
 }
 
 type Model struct {
-	tabs tabs.Model
-	revisions []markdown.Entry
+	tabs           tabs.Model
+	revisions      []markdown.Entry
 	activeRevision int
 	// The source file that the notes come from.
 	// This is necessary in case the notes want to
@@ -118,7 +118,9 @@ func (m Model) expandIncludes(md string) string {
 // Normalized format:
 // [file-path]:[selector]
 func (m Model) normalizeIncl(incl string) string {
-	var (file, selector string)
+	var (
+		file, selector string
+	)
 
 	selreg, _ := regexp.Compile("(^#.+$)|(^\\d+(-\\d+)?$)")
 

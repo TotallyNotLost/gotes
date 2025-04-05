@@ -1,9 +1,9 @@
 package tabs
 
 import (
-	"strings"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"strings"
 )
 
 func tabBorderWithBottom(left, middle, right string) lipgloss.Border {
@@ -30,10 +30,10 @@ func New() Model {
 }
 
 type Model struct {
-	tabs []Tab
+	tabs      []Tab
 	activeTab int
-	height int
-	width int
+	height    int
+	width     int
 }
 
 func (m *Model) SetHeight(height int) {
@@ -99,7 +99,7 @@ func (m Model) View() string {
 		} else if isLast && !isActive {
 			border.BottomRight = "┤"
 		}
-		style = style.Border(border).Width((m.width / len(m.tabs))-1)
+		style = style.Border(border).Width((m.width / len(m.tabs)) - 1)
 		renderedTabs = append(renderedTabs, style.Render(tab.title))
 	}
 
@@ -113,13 +113,13 @@ func (m Model) View() string {
 func NewTab(title string, body string) Tab {
 	return Tab{
 		title: title,
-		body: body,
+		body:  body,
 	}
 }
 
 type Tab struct {
 	title string
-	body string
+	body  string
 }
 
 func (t Tab) GetBody() string {
