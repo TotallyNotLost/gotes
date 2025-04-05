@@ -1,9 +1,9 @@
 package markdown
 
 import (
+	"github.com/samber/lo"
 	"regexp"
 	"strings"
-	"github.com/samber/lo"
 )
 
 func SplitEntries(text string) []string {
