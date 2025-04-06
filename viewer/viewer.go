@@ -1,39 +1,48 @@
 package viewer
 
 import (
-	"fmt"
+	"github.com/TotallyNotLost/gotes/cmd"
+	"github.com/TotallyNotLost/gotes/formatter"
 	"github.com/TotallyNotLost/gotes/markdown"
 	"github.com/TotallyNotLost/gotes/tabs"
+	"github.com/charmbracelet/bubbles/help"
+	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/glamour"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/samber/lo"
-	"os"
-	"regexp"
 	"strconv"
-	"strings"
 )
 
-var helpStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("241")).Render
+var helpStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("241")).PaddingLeft(2).Render
 
-func New() Model {
-	return Model{}
+func New(file string) Model {
+	mdFormatter := formatter.NewMarkdown(file)
+	tbs := tabs.New()
+	tbs.SetFormatter(mdFormatter)
+	return Model{
+		tabs:              tbs,
+		renderMarkdown:    true,
+		markdownFormatter: mdFormatter,
+		keyMap:            defaultKeyMap(),
+		help:              help.New(),
+	}
 }
 
 type Model struct {
-	tabs           tabs.Model
-	revisions      []markdown.Entry
-	activeRevision int
-	// The source file that the notes come from.
-	// This is necessary in case the notes want to
-	// reference/include other notes or lines in the file.
-	file string
+	tabs              tabs.Model
+	revisions         []markdown.Entry
+	activeRevision    int
+	renderMarkdown    bool
+	markdownFormatter formatter.Formatter
+	keyMap            keyMap
+	help              help.Model
 }
 
 func (m *Model) SetHeight(height int) {
-	// Subtract 1 to account for helpView()
-	// and an additional 3 to account for the title at the top
-	m.tabs.SetHeight(height - 4)
+	// Subtract the height of helpView()
+	// and an additional 2 to account for the title at the top
+	m.tabs.SetHeight(height - lipgloss.Height(m.helpView()) - 2)
 }
 
 func (m *Model) SetWidth(width int) {
@@ -43,19 +52,13 @@ func (m *Model) SetWidth(width int) {
 func (m *Model) SetRevisions(revisions []markdown.Entry) {
 	m.revisions = revisions
 	tabs := lo.Map(m.revisions, func(revision markdown.Entry, i int) tabs.Tab {
-		body := m.expandIncludes(revision.Body())
-		md, _ := glamour.Render(body, "dark")
 		title := "Revision HEAD~" + strconv.Itoa(i)
 		if i == 0 {
 			title += " (latest)"
 		}
-		return tabs.NewTab(title, md)
+		return tabs.NewTab(title, revision.Body())
 	})
 	m.tabs.SetTabs(tabs)
-}
-
-func (m *Model) SetFile(file string) {
-	m.file = file
 }
 
 func (m Model) Init() tea.Cmd {
@@ -63,6 +66,23 @@ func (m Model) Init() tea.Cmd {
 }
 
 func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
+	keyMap := defaultKeyMap()
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		if key.Matches(msg, keyMap.Back) {
+			return m, cmd.Back
+		}
+		if key.Matches(msg, keyMap.ToggleMarkdown) {
+			m.renderMarkdown = !m.renderMarkdown
+			if m.renderMarkdown {
+				m.tabs.SetFormatter(m.markdownFormatter)
+			} else {
+				m.tabs.SetFormatter(tabs.DefaultFormatter)
+			}
+
+		}
+	}
+
 	var cmd tea.Cmd
 	m.tabs, cmd = m.tabs.Update(msg)
 	return m, cmd
@@ -70,100 +90,28 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 
 func (m Model) View() string {
 	title := renderTitle(lo.LastOrEmpty(m.revisions))
+	var body string
 
-	if len(m.revisions) == 1 {
-		return title + m.tabs.GetTabs()[0].GetBody() + helpView()
-	}
+	// if len(m.revisions) == 1 {
+		// body = m.tabs.GetTabs()[0].GetBody()
+	// } else {
+		body = m.tabs.View()
+	// }
 
-	return title + m.tabs.View() + helpView()
+	return lipgloss.JoinVertical(lipgloss.Left, title, body, m.helpView())
 }
 
-func (m Model) expandIncludes(md string) string {
-	r, _ := regexp.Compile("\\[_metadata_:include\\]:# \"([^\"]*)\"")
+func (m Model) ShortHelp() []key.Binding {
+	bindings := []key.Binding{
+		m.keyMap.Back,
+		m.keyMap.ToggleMarkdown,
+	}
 
-	return r.ReplaceAllStringFunc(md, func(metadata string) string {
-		incl := m.normalizeIncl(r.FindStringSubmatch(metadata)[1])
-
-		parts := strings.SplitN(incl, ":", 2)
-		file := parts[0]
-
-		b, err := os.ReadFile(file)
-		if err != nil {
-			return fmt.Sprintf("{Error loading file \"%s\"}", incl)
-		}
-
-		selector := parts[1]
-
-		if selector == "" {
-			return strings.TrimSpace(string(b))
-		}
-
-		if strings.HasPrefix(selector, "#") {
-			id := strings.TrimLeft(selector, "#")
-			return markdown.GetEntry(string(b), id)
-		}
-
-		rng := strings.Split(selector, "-")
-		start, _ := strconv.Atoi(rng[0])
-		end, _ := strconv.Atoi(rng[1])
-
-		lines := strings.Split(string(b), "\n")
-		return strings.Join(lines[start:end], "\n")
-	})
+	return append(bindings, m.tabs.ShortHelp()...)
 }
 
-// Take the include and add optional parts.
-// This will make it easier to parse/handle elsewhere.
-//
-// Normalized format:
-// [file-path]:[selector]
-func (m Model) normalizeIncl(incl string) string {
-	var (
-		file, selector string
-	)
-
-	selreg, _ := regexp.Compile("(^#.+$)|(^\\d+(-\\d+)?$)")
-
-	if strings.Contains(incl, ":") {
-		parts := strings.SplitN(incl, ":", 2)
-		file = parts[0]
-		selector = parts[1]
-	} else if selreg.MatchString(incl) {
-		file = m.file
-		selector = incl
-	} else {
-		file = incl
-		selector = ""
-	}
-
-	return fmt.Sprintf("%s:%s", m.normalizeInclFile(file), m.normalizeInclSelector(selector))
-}
-
-func (m Model) normalizeInclFile(file string) string {
-	if file != "" {
-		return file
-	}
-
-	return m.file
-}
-
-// Normalizes selector so that it fits one of these formats:
-//
-// 1. <empty> - Return the entire contents of the file.
-// 2. #{id} -> The ID of a note within the file.
-// 3. {start}-{end} -> Line numbers to include. Start is inclusive, end is exclusive.
-func (m Model) normalizeInclSelector(selector string) string {
-	if selector == "" {
-		return selector
-	}
-
-	r, _ := regexp.Compile("^(#.+)|(\\d+-\\d+)$")
-
-	if r.MatchString(selector) {
-		return selector
-	}
-
-	return fmt.Sprintf("%s-%s", selector, selector)
+func (m Model) FullHelp() [][]key.Binding {
+	return [][]key.Binding{m.ShortHelp()}
 }
 
 func renderTitle(note markdown.Entry) string {
@@ -173,6 +121,18 @@ func renderTitle(note markdown.Entry) string {
 	return out
 }
 
-func helpView() string {
-	return helpStyle("\n  ↑/↓: Navigate • q: Quit\n")
+func (m Model) helpView() string {
+	return helpStyle(m.help.View(m))
+}
+
+type keyMap struct {
+	Back           key.Binding
+	ToggleMarkdown key.Binding
+}
+
+func defaultKeyMap() keyMap {
+	return keyMap{
+		Back:           key.NewBinding(key.WithKeys("backspace", "esc", "q"), key.WithHelp("esc/q", "back")),
+		ToggleMarkdown: key.NewBinding(key.WithKeys("m"), key.WithHelp("m", "toggle markdown")),
+	}
 }

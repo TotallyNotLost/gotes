@@ -7,6 +7,7 @@ import "github.com/charmbracelet/bubbles/viewport"
 import "github.com/charmbracelet/lipgloss"
 import "github.com/google/uuid"
 import "github.com/samber/lo"
+import gotescmd "github.com/TotallyNotLost/gotes/cmd"
 import "github.com/TotallyNotLost/gotes/markdown"
 import "github.com/TotallyNotLost/gotes/viewer"
 import "log"
@@ -39,14 +40,13 @@ var mainStyle = lipgloss.NewStyle().
 var pageStyle = lipgloss.NewStyle()
 
 type viewportModel struct {
-	viewport     viewport.Model
-	list         list.Model
-	noteViewer   viewer.Model
-	newNote      *newNoteModel
-	mode         mode
-	helpViewport viewport.Model
-	notes        []markdown.Entry
-	noteInfos    map[string][]noteInfo
+	viewport   viewport.Model
+	list       list.Model
+	noteViewer viewer.Model
+	newNote    *newNoteModel
+	mode       mode
+	notes      []markdown.Entry
+	noteInfos  map[string][]noteInfo
 }
 
 func (model viewportModel) Init() tea.Cmd {
@@ -54,22 +54,31 @@ func (model viewportModel) Init() tea.Cmd {
 }
 
 func (m viewportModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	var cmd tea.Cmd
+	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		m.viewport.Height = msg.Height - 2
+		m.viewport.Width = msg.Width - 10
+		m.list.SetSize(m.viewport.Width, m.viewport.Height)
+		m.noteViewer.SetHeight(m.viewport.Height)
+		m.noteViewer.SetWidth(m.viewport.Width)
+	}
+
+	var cmd, vcmd tea.Cmd
 
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "q", "ctrl+c":
 			return m, tea.Quit
-		case "esc":
-			m.mode = browsing
-			return m, nil
 		}
+	case gotescmd.BackMsg:
+		m.mode = browsing
+		return m, nil
 	}
 
+	m.noteViewer, vcmd = m.noteViewer.Update(msg)
 	if m.mode == viewing {
-		m.noteViewer, cmd = m.noteViewer.Update(msg)
-		return m, cmd
+		return m, vcmd
 	}
 
 	if m.mode == creating {
@@ -132,9 +141,6 @@ func (m viewportModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 					m.mode = viewing
 
-					m.noteViewer.SetFile(os.Args[1])
-					m.noteViewer.SetHeight(m.viewport.Height)
-					m.noteViewer.SetWidth(m.viewport.Width)
 					revisions := []markdown.Entry{}
 					for _, no := range slices.Backward(notes) {
 						revisions = append(revisions, no)
@@ -166,15 +172,9 @@ func (m viewportModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.list, cmd = m.list.Update(msg)
 			return m, cmd
 		}
-	case tea.WindowSizeMsg:
-		m.viewport.Height = msg.Height - 2
-		m.viewport.Width = msg.Width - 10
-		if m.mode == browsing {
-			m.list.SetSize(m.viewport.Width, m.viewport.Height)
-		}
 	}
 	m.list, cmd = m.list.Update(msg)
-	return m, cmd
+	return m, tea.Batch(cmd, vcmd)
 }
 
 func (m viewportModel) View() string {
@@ -274,14 +274,14 @@ func main() {
 	notes := loadEntries()
 	l := newList(notes)
 	noteInfos := makeNoteInfos(notes)
+	noteViewer := viewer.New(os.Args[1])
 
 	p := tea.NewProgram(&viewportModel{
-		viewport:     vp,
-		list:         l,
-		noteViewer:   viewer.New(),
-		helpViewport: viewport.New(0, 1),
-		notes:        notes,
-		noteInfos:    noteInfos,
+		viewport:   vp,
+		list:       l,
+		noteViewer: noteViewer,
+		notes:      notes,
+		noteInfos:  noteInfos,
 	}, tea.WithAltScreen())
 
 	if _, err := p.Run(); err != nil {
