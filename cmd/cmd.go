@@ -7,3 +7,31 @@ func Back() tea.Msg {
 }
 
 type BackMsg int
+
+func NewEntry(id string, body string, tags []string) tea.Cmd {
+	return func() tea.Msg {
+		return NewEntryMsg{
+			id:   id,
+			body: body,
+			tags: tags,
+		}
+	}
+}
+
+type NewEntryMsg struct {
+	id   string
+	body string
+	tags []string
+}
+
+func (msg NewEntryMsg) GetId() string {
+	return msg.id
+}
+
+func (msg NewEntryMsg) GetBody() string {
+	return msg.body
+}
+
+func (msg NewEntryMsg) GetTags() []string {
+	return msg.tags
+}

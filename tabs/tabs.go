@@ -62,6 +62,7 @@ func (m Model) GetTabs() []Tab {
 }
 
 func (m *Model) SetTabs(tabs []Tab) {
+	m.activeTab = 0
 	m.tabs = tabs
 }
 

@@ -32,7 +32,6 @@ func New(file string) Model {
 type Model struct {
 	tabs              tabs.Model
 	revisions         []markdown.Entry
-	activeRevision    int
 	renderMarkdown    bool
 	markdownFormatter formatter.Formatter
 	keyMap            keyMap

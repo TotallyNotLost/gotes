@@ -8,6 +8,7 @@ import "github.com/charmbracelet/lipgloss"
 import "github.com/google/uuid"
 import "github.com/samber/lo"
 import gotescmd "github.com/TotallyNotLost/gotes/cmd"
+import "github.com/TotallyNotLost/gotes/editor"
 import "github.com/TotallyNotLost/gotes/markdown"
 import "github.com/TotallyNotLost/gotes/viewer"
 import "log"
@@ -25,7 +26,7 @@ type mode int
 const (
 	browsing mode = 0
 	viewing       = 1
-	creating      = 2
+	editing       = 2
 )
 
 func (i item) Title() string       { return i.title }
@@ -40,13 +41,13 @@ var mainStyle = lipgloss.NewStyle().
 var pageStyle = lipgloss.NewStyle()
 
 type viewportModel struct {
-	viewport   viewport.Model
-	list       list.Model
-	noteViewer viewer.Model
-	newNote    *newNoteModel
-	mode       mode
-	notes      []markdown.Entry
-	noteInfos  map[string][]noteInfo
+	viewport  viewport.Model
+	list      list.Model
+	viewer    viewer.Model
+	editor    editor.Model
+	mode      mode
+	notes     []markdown.Entry
+	noteInfos map[string][]noteInfo
 }
 
 func (model viewportModel) Init() tea.Cmd {
@@ -54,70 +55,36 @@ func (model viewportModel) Init() tea.Cmd {
 }
 
 func (m viewportModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var cmd, vcmd tea.Cmd
+
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.viewport.Height = msg.Height - 2
 		m.viewport.Width = msg.Width - 10
 		m.list.SetSize(m.viewport.Width, m.viewport.Height)
-		m.noteViewer.SetHeight(m.viewport.Height)
-		m.noteViewer.SetWidth(m.viewport.Width)
-	}
-
-	var cmd, vcmd tea.Cmd
-
-	switch msg := msg.(type) {
-	case tea.KeyMsg:
-		switch msg.String() {
-		case "q", "ctrl+c":
-			return m, tea.Quit
-		}
+		m.viewer.SetHeight(m.viewport.Height)
+		m.viewer.SetWidth(m.viewport.Width)
+		m.editor.SetHeight(m.viewport.Height)
+		m.editor.SetWidth(m.viewport.Width)
 	case gotescmd.BackMsg:
+		m.mode = browsing
+		return m, nil
+	case gotescmd.NewEntryMsg:
+		writeEntry(msg.GetId(), msg.GetBody(), msg.GetTags())
+		m.notes = loadEntries()
+		m.list.SetItems(loadItems(m.notes))
+		m.noteInfos = makeNoteInfos(m.notes)
 		m.mode = browsing
 		return m, nil
 	}
 
-	m.noteViewer, vcmd = m.noteViewer.Update(msg)
+	m.viewer, vcmd = m.viewer.Update(msg)
 	if m.mode == viewing {
 		return m, vcmd
 	}
 
-	if m.mode == creating {
-		switch msg := msg.(type) {
-		case tea.KeyMsg:
-			if msg.String() == "enter" && m.newNote.state == writingTags {
-				f, err := os.OpenFile(os.Args[1], os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
-				if err != nil {
-					panic(err)
-				}
-
-				defer f.Close()
-
-				f.WriteString("\n---\n")
-				f.WriteString(m.newNote.textarea.Value())
-
-				id := m.newNote.id
-				tags := m.newNote.tagsInput.Value()
-
-				if (id + tags) != "" {
-					f.WriteString("\n")
-				}
-				if id != "" {
-					f.WriteString("\n[_metadata_:id]:# \"" + id + "\"")
-				}
-				if tags != "" {
-					f.WriteString("\n[_metadata_:tags]:# \"" + tags + "\"")
-				}
-
-				m.notes = loadEntries()
-				m.list.SetItems(loadItems(m.notes))
-				m.noteInfos = makeNoteInfos(m.notes)
-				m.mode = browsing
-				return m, nil
-			}
-		}
-
-		n, cmd := m.newNote.Update(msg)
-		m.newNote = &n
+	m.editor, cmd = m.editor.Update(msg)
+	if m.mode == editing {
 		return m, cmd
 	}
 
@@ -130,47 +97,40 @@ func (m viewportModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		switch msg.String() {
 		case "enter":
-			if m.mode == browsing {
-				i, ok := m.list.SelectedItem().(item)
-				if ok {
-					noteInfos := m.noteInfos[i.id]
-					notes := []markdown.Entry{}
-					for _, noteInfo := range noteInfos {
-						notes = append(notes, m.notes[noteInfo.index])
-					}
-
-					m.mode = viewing
-
-					revisions := []markdown.Entry{}
-					for _, no := range slices.Backward(notes) {
-						revisions = append(revisions, no)
-					}
-					m.noteViewer.SetRevisions(revisions)
-					return m, nil
+			i, ok := m.list.SelectedItem().(item)
+			if ok {
+				noteInfos := m.noteInfos[i.id]
+				notes := []markdown.Entry{}
+				for _, noteInfo := range noteInfos {
+					notes = append(notes, m.notes[noteInfo.index])
 				}
-				return m, tea.Quit
+
+				m.mode = viewing
+
+				revisions := []markdown.Entry{}
+				for _, no := range slices.Backward(notes) {
+					revisions = append(revisions, no)
+				}
+				m.viewer.SetRevisions(revisions)
+				return m, nil
 			}
 		case "n":
-			m.newNote, _ = newNote(&m.viewport, uuid.New().String())
-			m.mode = creating
+			m.editor.SetId(uuid.New().String())
+			m.editor.SetBody("")
+			m.editor.SetTags("")
+			m.mode = editing
 		case "e":
 			i, ok := m.list.SelectedItem().(item)
 			if ok {
-				m.newNote, _ = newNote(&m.viewport, i.id)
-				m.newNote.textarea.SetValue(i.title + "\n\n" + strings.TrimSpace(removeMetadata(removeMetadata(i.content, "id"), "tags")))
+				body := i.title + "\n\n" + strings.TrimSpace(removeMetadata(removeMetadata(i.content, "id"), "tags"))
 				metadata := markdown.GetMetadata(i.content)
-				if tags, ok := metadata["tags"]; ok {
-					m.newNote.tagsInput.SetValue(tags)
-				}
-				m.mode = creating
+				tags, _ := metadata["tags"]
+
+				m.editor.SetId(i.id)
+				m.editor.SetBody(body)
+				m.editor.SetTags(tags)
+				m.mode = editing
 			}
-		default:
-			if m.mode == viewing {
-				m.viewport, cmd = m.viewport.Update(msg)
-				return m, cmd
-			}
-			m.list, cmd = m.list.Update(msg)
-			return m, cmd
 		}
 	}
 	m.list, cmd = m.list.Update(msg)
@@ -181,12 +141,12 @@ func (m viewportModel) View() string {
 	var view string
 
 	switch m.mode {
-	case viewing:
-		view = m.noteViewer.View()
 	case browsing:
 		view = m.list.View()
-	case creating:
-		view = m.newNote.View()
+	case viewing:
+		view = m.viewer.View()
+	case editing:
+		view = m.editor.View()
 	}
 
 	m.viewport.SetContent(pageStyle.Render(view))
@@ -250,6 +210,30 @@ func loadEntries() []markdown.Entry {
 	return items
 }
 
+func writeEntry(id string, body string, tags []string) {
+	f, err := os.OpenFile(os.Args[1], os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
+	if err != nil {
+		panic(err)
+	}
+
+	defer f.Close()
+
+	f.WriteString("\n---\n")
+	f.WriteString(body)
+
+	tgs := strings.Join(tags, ",")
+
+	if (id + tgs) != "" {
+		f.WriteString("\n")
+	}
+	if id != "" {
+		f.WriteString("\n[_metadata_:id]:# \"" + id + "\"")
+	}
+	if tgs != "" {
+		f.WriteString("\n[_metadata_:tags]:# \"" + tgs + "\"")
+	}
+}
+
 type noteInfo struct {
 	index int
 }
@@ -274,14 +258,15 @@ func main() {
 	notes := loadEntries()
 	l := newList(notes)
 	noteInfos := makeNoteInfos(notes)
-	noteViewer := viewer.New(os.Args[1])
+	viewer := viewer.New(os.Args[1])
 
 	p := tea.NewProgram(&viewportModel{
-		viewport:   vp,
-		list:       l,
-		noteViewer: noteViewer,
-		notes:      notes,
-		noteInfos:  noteInfos,
+		viewport:  vp,
+		list:      l,
+		viewer:    viewer,
+		editor: editor.New(),
+		notes:     notes,
+		noteInfos: noteInfos,
 	}, tea.WithAltScreen())
 
 	if _, err := p.Run(); err != nil {
