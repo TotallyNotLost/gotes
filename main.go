@@ -19,7 +19,7 @@ import "strings"
 
 type item struct {
 	id, text string
-	tags               []string
+	tags     []string
 }
 
 type mode int
@@ -85,8 +85,8 @@ func (m viewportModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			id = uuid.New().String()
 		} else {
 			var ok bool
-			entry, ok = lo.Find(m.notes, func(item markdown.Entry) bool {
-				return item.Id() == id
+			entry, _, ok = lo.FindLastIndexOf(m.notes, func(item markdown.Entry) bool {
+				return item.Id() == msg.GetId()
 			})
 			if !ok {
 				panic(fmt.Sprintf("Can't find entry %s", msg.GetId()))
