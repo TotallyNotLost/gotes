@@ -170,7 +170,7 @@ type keyMap struct {
 
 func defaultKeyMap() keyMap {
 	return keyMap{
-		Back:     key.NewBinding(key.WithKeys("esc"), key.WithHelp("esc", "back")),
+		Back:     key.NewBinding(key.WithKeys("ctrl+c"), key.WithHelp("ctrl+c", "back")),
 		Previous: key.NewBinding(key.WithKeys("shift+tab"), key.WithHelp("shit+tab", "previous")),
 		Next:     key.NewBinding(key.WithKeys("tab"), key.WithHelp("tab", "next")),
 		Submit:   key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "submit")),
