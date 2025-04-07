@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/TotallyNotLost/gotes/markdown"
 	"github.com/charmbracelet/glamour"
+	"github.com/samber/lo"
 	"os"
 	"regexp"
 	"strconv"
@@ -29,48 +30,48 @@ func (mf *MarkdownFormatter) SetWidth(width int) {
 }
 
 func (mf MarkdownFormatter) Format(s string) string {
-	expanded := mf.expandIncludes(s)
 	r, _ := glamour.NewTermRenderer(
 		// detect background color and pick either the default dark or light theme
 		glamour.WithAutoStyle(),
 		// wrap output at specific width (default is 80)
 		glamour.WithWordWrap(mf.width),
 	)
-	md, _ := r.Render(expanded)
+	md, _ := r.Render(mf.expand(s))
 	return md
+}
+
+func (mf MarkdownFormatter) expand(md string) string {
+	return mf.expandIncludes(mf.expandLink(mf.expandLinkShortSyntax(md)))
+}
+
+func (mf MarkdownFormatter) expandLinkShortSyntax(md string) string {
+	r, _ := regexp.Compile("\\{([-0-9a-zA-Z]+)\\}")
+
+	return r.ReplaceAllStringFunc(md, func(metadata string) string {
+		id := r.FindStringSubmatch(metadata)[1]
+
+		return fmt.Sprintf("[_metadata_:link]:# \"$%s\"", id)
+	})
+}
+
+func (mf MarkdownFormatter) expandLink(md string) string {
+	r, _ := regexp.Compile("\\[_metadata_:link\\]:# \"([^\"]*)\"")
+	return r.ReplaceAllStringFunc(md, func(metadata string) string {
+		identifier := mf.normalizeIdentifier(r.FindStringSubmatch(metadata)[1])
+		text := mf.getTextForIdentifier(identifier)
+		title := lo.FirstOrEmpty(strings.Split(text, "\n"))
+
+		return fmt.Sprintf("[%s](%s)", title, identifier)
+	})
 }
 
 func (mf MarkdownFormatter) expandIncludes(md string) string {
 	r, _ := regexp.Compile("\\[_metadata_:include\\]:# \"([^\"]*)\"")
 
 	return r.ReplaceAllStringFunc(md, func(metadata string) string {
-		incl := mf.normalizeIncl(r.FindStringSubmatch(metadata)[1])
+		identifier := mf.normalizeIdentifier(r.FindStringSubmatch(metadata)[1])
 
-		parts := strings.SplitN(incl, ":", 2)
-		file := parts[0]
-
-		b, err := os.ReadFile(file)
-		if err != nil {
-			return fmt.Sprintf("{Error loading file \"%s\"}", incl)
-		}
-
-		selector := parts[1]
-
-		if selector == "" {
-			return strings.TrimSpace(string(b))
-		}
-
-		if strings.HasPrefix(selector, "$") {
-			id := strings.TrimLeft(selector, "$")
-			return markdown.GetEntry(string(b), id)
-		}
-
-		rng := strings.Split(selector, "-")
-		start, _ := strconv.Atoi(rng[0])
-		end, _ := strconv.Atoi(rng[1])
-
-		lines := strings.Split(string(b), "\n")
-		return strings.Join(lines[start:end], "\n")
+		return mf.getTextForIdentifier(identifier)
 	})
 }
 
@@ -79,7 +80,7 @@ func (mf MarkdownFormatter) expandIncludes(md string) string {
 //
 // Normalized format:
 // [file-path]:[selector]
-func (mf MarkdownFormatter) normalizeIncl(incl string) string {
+func (mf MarkdownFormatter) normalizeIdentifier(incl string) string {
 	var (
 		file, selector string
 	)
@@ -129,4 +130,32 @@ func (mf MarkdownFormatter) normalizeInclSelector(selector string) string {
 	// Expand this to be a line range.
 	// TODO: This should go to selector+1 since end is exclusive.
 	return fmt.Sprintf("%s-%s", selector, selector)
+}
+
+func (mf MarkdownFormatter) getTextForIdentifier(identifier string) string {
+	parts := strings.SplitN(identifier, ":", 2)
+	file := parts[0]
+
+	b, err := os.ReadFile(file)
+	if err != nil {
+		return fmt.Sprintf("{Error loading file \"%s\"}", identifier)
+	}
+
+	selector := parts[1]
+
+	if selector == "" {
+		return strings.TrimSpace(string(b))
+	}
+
+	if strings.HasPrefix(selector, "$") {
+		id := strings.TrimLeft(selector, "$")
+		return markdown.GetEntry(string(b), id)
+	}
+
+	rng := strings.Split(selector, "-")
+	start, _ := strconv.Atoi(rng[0])
+	end, _ := strconv.Atoi(rng[1])
+
+	lines := strings.Split(string(b), "\n")
+	return strings.Join(lines[start:end], "\n")
 }
