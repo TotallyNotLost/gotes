@@ -60,8 +60,8 @@ func (mf MarkdownFormatter) expandIncludes(md string) string {
 			return strings.TrimSpace(string(b))
 		}
 
-		if strings.HasPrefix(selector, "#") {
-			id := strings.TrimLeft(selector, "#")
+		if strings.HasPrefix(selector, "$") {
+			id := strings.TrimLeft(selector, "$")
 			return markdown.GetEntry(string(b), id)
 		}
 
@@ -84,7 +84,7 @@ func (mf MarkdownFormatter) normalizeIncl(incl string) string {
 		file, selector string
 	)
 
-	selreg, _ := regexp.Compile("(^#.+$)|(^\\d+(-\\d+)?$)")
+	selreg, _ := regexp.Compile("(^\\$.+$)|(^\\d+(-\\d+)?$)")
 
 	if strings.Contains(incl, ":") {
 		parts := strings.SplitN(incl, ":", 2)
@@ -119,11 +119,14 @@ func (mf MarkdownFormatter) normalizeInclSelector(selector string) string {
 		return selector
 	}
 
-	r, _ := regexp.Compile("^(#.+)|(\\d+-\\d+)$")
+	valid, _ := regexp.Compile("^(\\$.+)|(\\d+-\\d+)$")
 
-	if r.MatchString(selector) {
+	if valid.MatchString(selector) {
 		return selector
 	}
 
+	// This appears to be a line number selector.
+	// Expand this to be a line range.
+	// TODO: This should go to selector+1 since end is exclusive.
 	return fmt.Sprintf("%s-%s", selector, selector)
 }
