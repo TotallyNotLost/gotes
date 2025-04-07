@@ -21,10 +21,10 @@ var (
 	activeTabBorder   = tabBorderWithBottom("┘", " ", "└")
 	docStyle          = lipgloss.NewStyle().Padding(0, 1, 0, 1)
 	highlightColor    = lipgloss.AdaptiveColor{Light: "#874BFD", Dark: "7"}
-	inactiveTabStyle  = lipgloss.NewStyle().Border(inactiveTabBorder, true).BorderForeground(highlightColor).Padding(0, 1)
-	activeTabStyle    = inactiveTabStyle.Border(activeTabBorder, true)
+	inactiveTabStyle  = lipgloss.NewStyle().BorderForeground(lipgloss.Color("241")).Foreground(lipgloss.Color("241")).Border(lipgloss.NormalBorder())
+	activeTabStyle    = inactiveTabStyle.BorderForeground(lipgloss.Color("7")).Foreground(lipgloss.Color("7"))
 	helpStyle         = lipgloss.NewStyle().Foreground(lipgloss.Color("241")).Render
-	windowStyle       = lipgloss.NewStyle().BorderForeground(highlightColor).Padding(2, 0).Border(lipgloss.NormalBorder()).UnsetBorderTop()
+	windowStyle       = lipgloss.NewStyle().BorderForeground(highlightColor).Border(lipgloss.NormalBorder())
 )
 
 func New() Model {
@@ -49,12 +49,12 @@ func (m *Model) SetFormatter(formatter formatter.Formatter) {
 
 func (m *Model) SetHeight(height int) {
 	// Subtract to account for the tab view top
-	m.height = height - 6
+	m.height = height - 5
 }
 
 func (m *Model) SetWidth(width int) {
 	// Subtract to account for the tab view sides
-	m.width = width - 4
+	m.width = width - 3
 }
 
 func (m Model) GetTabs() []Tab {
@@ -93,23 +93,12 @@ func (m Model) View() string {
 
 	for i, tab := range m.tabs {
 		var style lipgloss.Style
-		isFirst, isLast, isActive := i == 0, i == len(m.tabs)-1, i == m.activeTab
+		isActive := i == m.activeTab
 		if isActive {
 			style = activeTabStyle
 		} else {
 			style = inactiveTabStyle
 		}
-		border, _, _, _, _ := style.GetBorder()
-		if isFirst && isActive {
-			border.BottomLeft = "│"
-		} else if isFirst && !isActive {
-			border.BottomLeft = "├"
-		} else if isLast && isActive {
-			border.BottomRight = "│"
-		} else if isLast && !isActive {
-			border.BottomRight = "┤"
-		}
-		style = style.Border(border).Width((m.width / len(m.tabs)) - 1)
 		renderedTabs = append(renderedTabs, style.Render(tab.title))
 	}
 
@@ -121,7 +110,7 @@ func (m Model) View() string {
 }
 
 func (m Model) body() string {
-	if len(m.tabs) < m.activeTab {
+	if len(m.tabs) <= m.activeTab {
 		return ""
 	}
 

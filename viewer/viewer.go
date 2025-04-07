@@ -17,7 +17,7 @@ import (
 var helpStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("241")).PaddingLeft(2).Render
 
 func New(file string) Model {
-	mdFormatter := formatter.NewMarkdown(file)
+	mdFormatter := formatter.NewMarkdownFormatter(file)
 	tbs := tabs.New()
 	tbs.SetFormatter(mdFormatter)
 	return Model{
@@ -33,19 +33,19 @@ type Model struct {
 	tabs              tabs.Model
 	revisions         []markdown.Entry
 	renderMarkdown    bool
-	markdownFormatter formatter.Formatter
+	markdownFormatter formatter.MarkdownFormatter
 	keyMap            keyMap
 	help              help.Model
 }
 
 func (m *Model) SetHeight(height int) {
-	// Subtract the height of helpView()
-	// and an additional 2 to account for the title at the top
-	m.tabs.SetHeight(height - lipgloss.Height(m.helpView()) - 2)
+	// Subtract the height of helpView() and the title bar at the top.
+	m.tabs.SetHeight(height - lipgloss.Height(renderTitle(lo.LastOrEmpty(m.revisions))) - lipgloss.Height(m.helpView()))
 }
 
 func (m *Model) SetWidth(width int) {
 	m.tabs.SetWidth(width)
+	m.markdownFormatter.SetWidth(width - 2)
 }
 
 func (m *Model) SetRevisions(revisions []markdown.Entry) {
@@ -65,13 +65,12 @@ func (m Model) Init() tea.Cmd {
 }
 
 func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
-	keyMap := defaultKeyMap()
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
-		if key.Matches(msg, keyMap.Back) {
+		if key.Matches(msg, m.keyMap.Back) {
 			return m, cmd.Back
 		}
-		if key.Matches(msg, keyMap.ToggleMarkdown) {
+		if key.Matches(msg, m.keyMap.ToggleMarkdown) {
 			m.renderMarkdown = !m.renderMarkdown
 			if m.renderMarkdown {
 				m.tabs.SetFormatter(m.markdownFormatter)
@@ -92,9 +91,9 @@ func (m Model) View() string {
 	var body string
 
 	// if len(m.revisions) == 1 {
-		// body = m.tabs.GetTabs()[0].GetBody()
+	// body = m.tabs.GetTabs()[0].GetBody()
 	// } else {
-		body = m.tabs.View()
+	body = m.tabs.View()
 	// }
 
 	return lipgloss.JoinVertical(lipgloss.Left, title, body, m.helpView())

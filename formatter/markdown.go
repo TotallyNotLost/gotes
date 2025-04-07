@@ -10,26 +10,37 @@ import (
 	"strings"
 )
 
-func NewMarkdown(file string) Formatter {
-	return markdownFormatter{
+func NewMarkdownFormatter(file string) MarkdownFormatter {
+	return MarkdownFormatter{
 		file: file,
 	}
 }
 
-type markdownFormatter struct {
+type MarkdownFormatter struct {
 	// The source file that the markdown comes from.
 	// This is necessary in case the markdown has metadata that
 	// references/includes other notes or lines in the file.
-	file string
+	file  string
+	width int
 }
 
-func (mf markdownFormatter) Format(s string) string {
+func (mf *MarkdownFormatter) SetWidth(width int) {
+	mf.width = width
+}
+
+func (mf MarkdownFormatter) Format(s string) string {
 	expanded := mf.expandIncludes(s)
-	md, _ := glamour.Render(expanded, "dark")
+	r, _ := glamour.NewTermRenderer(
+		// detect background color and pick either the default dark or light theme
+		glamour.WithAutoStyle(),
+		// wrap output at specific width (default is 80)
+		glamour.WithWordWrap(mf.width),
+	)
+	md, _ := r.Render(expanded)
 	return md
 }
 
-func (mf markdownFormatter) expandIncludes(md string) string {
+func (mf MarkdownFormatter) expandIncludes(md string) string {
 	r, _ := regexp.Compile("\\[_metadata_:include\\]:# \"([^\"]*)\"")
 
 	return r.ReplaceAllStringFunc(md, func(metadata string) string {
@@ -68,7 +79,7 @@ func (mf markdownFormatter) expandIncludes(md string) string {
 //
 // Normalized format:
 // [file-path]:[selector]
-func (mf markdownFormatter) normalizeIncl(incl string) string {
+func (mf MarkdownFormatter) normalizeIncl(incl string) string {
 	var (
 		file, selector string
 	)
@@ -90,7 +101,7 @@ func (mf markdownFormatter) normalizeIncl(incl string) string {
 	return fmt.Sprintf("%s:%s", mf.normalizeInclFile(file), mf.normalizeInclSelector(selector))
 }
 
-func (mf markdownFormatter) normalizeInclFile(file string) string {
+func (mf MarkdownFormatter) normalizeInclFile(file string) string {
 	if file != "" {
 		return file
 	}
@@ -103,7 +114,7 @@ func (mf markdownFormatter) normalizeInclFile(file string) string {
 // 1. <empty> - Return the entire contents of the file.
 // 2. #{id} -> The ID of a note within the file.
 // 3. {start}-{end} -> Line numbers to include. Start is inclusive, end is exclusive.
-func (mf markdownFormatter) normalizeInclSelector(selector string) string {
+func (mf MarkdownFormatter) normalizeInclSelector(selector string) string {
 	if selector == "" {
 		return selector
 	}
