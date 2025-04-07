@@ -35,3 +35,19 @@ func (msg NewEntryMsg) GetBody() string {
 func (msg NewEntryMsg) GetTags() []string {
 	return msg.tags
 }
+
+func EditEntry(id string) tea.Cmd {
+	return func() tea.Msg {
+		return EditEntryMsg {
+			id: id,
+		}
+	}
+}
+
+type EditEntryMsg struct {
+	id string
+}
+
+func (msg EditEntryMsg) GetId() string {
+	return msg.id
+}

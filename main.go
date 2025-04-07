@@ -1,5 +1,6 @@
 package main
 
+import "fmt"
 import "os"
 import tea "github.com/charmbracelet/bubbletea"
 import "github.com/charmbracelet/bubbles/list"
@@ -76,6 +77,22 @@ func (m viewportModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.noteInfos = makeNoteInfos(m.notes)
 		m.mode = browsing
 		return m, nil
+	case gotescmd.EditEntryMsg:
+		entry, ok := lo.Find(m.notes, func(item markdown.Entry) bool {
+			return item.Id() == msg.GetId()
+		})
+		if !ok {
+			panic(fmt.Sprintf("Can't find entry %s", msg.GetId()))
+		}
+		body := entry.Title() + "\n\n" + strings.TrimSpace(removeMetadata(removeMetadata(entry.Body(), "id"), "tags"))
+		metadata := markdown.GetMetadata(entry.Body())
+		tags, _ := metadata["tags"]
+
+		m.editor.SetId(entry.Id())
+		m.editor.SetBody(body)
+		m.editor.SetTags(tags)
+		m.mode = editing
+		return m, nil
 	}
 
 	m.viewer, vcmd = m.viewer.Update(msg)
@@ -122,14 +139,7 @@ func (m viewportModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "e":
 			i, ok := m.list.SelectedItem().(item)
 			if ok {
-				body := i.title + "\n\n" + strings.TrimSpace(removeMetadata(removeMetadata(i.content, "id"), "tags"))
-				metadata := markdown.GetMetadata(i.content)
-				tags, _ := metadata["tags"]
-
-				m.editor.SetId(i.id)
-				m.editor.SetBody(body)
-				m.editor.SetTags(tags)
-				m.mode = editing
+				return m, gotescmd.EditEntry(i.id)
 			}
 		}
 	}

@@ -67,10 +67,12 @@ func (m Model) Init() tea.Cmd {
 func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
-		if key.Matches(msg, m.keyMap.Back) {
+		switch {
+		case key.Matches(msg, m.keyMap.Back):
 			return m, cmd.Back
-		}
-		if key.Matches(msg, m.keyMap.ToggleMarkdown) {
+		case key.Matches(msg, m.keyMap.Edit):
+			return m, cmd.EditEntry(m.getActiveRevision().Id())
+		case key.Matches(msg, m.keyMap.ToggleMarkdown):
 			m.renderMarkdown = !m.renderMarkdown
 			if m.renderMarkdown {
 				m.tabs.SetFormatter(m.markdownFormatter)
@@ -87,7 +89,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 }
 
 func (m Model) View() string {
-	title := renderTitle(lo.LastOrEmpty(m.revisions))
+	title := renderTitle(m.getActiveRevision())
 	body := m.tabs.View()
 
 	return lipgloss.JoinVertical(lipgloss.Left, title, body, m.helpView())
@@ -96,6 +98,7 @@ func (m Model) View() string {
 func (m Model) ShortHelp() []key.Binding {
 	bindings := []key.Binding{
 		m.keyMap.Back,
+		m.keyMap.Edit,
 		m.keyMap.ToggleMarkdown,
 	}
 
@@ -113,18 +116,24 @@ func renderTitle(note markdown.Entry) string {
 	return out
 }
 
+func (m Model) getActiveRevision() markdown.Entry {
+	return lo.LastOrEmpty(m.revisions)
+}
+
 func (m Model) helpView() string {
 	return helpStyle(m.help.View(m))
 }
 
 type keyMap struct {
 	Back           key.Binding
+	Edit           key.Binding
 	ToggleMarkdown key.Binding
 }
 
 func defaultKeyMap() keyMap {
 	return keyMap{
 		Back:           key.NewBinding(key.WithKeys("backspace", "esc", "q"), key.WithHelp("esc/q", "back")),
+		Edit:           key.NewBinding(key.WithKeys("e"), key.WithHelp("e", "edit")),
 		ToggleMarkdown: key.NewBinding(key.WithKeys("m"), key.WithHelp("m", "toggle markdown")),
 	}
 }
