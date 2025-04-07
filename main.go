@@ -78,18 +78,18 @@ func (m viewportModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.mode = browsing
 		return m, nil
 	case gotescmd.EditEntryMsg:
-		var id string
 		var entry markdown.Entry
+		id := msg.GetId()
 
-		if msg.GetId() == "" {
+		if id == "" {
 			id = uuid.New().String()
 		} else {
 			var ok bool
 			entry, _, ok = lo.FindLastIndexOf(m.notes, func(item markdown.Entry) bool {
-				return item.Id() == msg.GetId()
+				return item.Id() == id
 			})
 			if !ok {
-				panic(fmt.Sprintf("Can't find entry %s", msg.GetId()))
+				panic(fmt.Sprintf("Can't find entry %s", id))
 			}
 		}
 
