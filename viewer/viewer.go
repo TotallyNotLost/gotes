@@ -41,7 +41,7 @@ type Model struct {
 
 func (m *Model) SetHeight(height int) {
 	// Subtract the height of helpView() and the title bar at the top.
-	m.tabs.SetHeight(height - lipgloss.Height(renderTitle(lo.LastOrEmpty(m.revisions))) - lipgloss.Height(m.helpView()) - 20)
+	m.tabs.SetHeight(height - lipgloss.Height(renderTitle(lo.LastOrEmpty(m.revisions))) - lipgloss.Height(m.helpView()) - 2)
 }
 
 func (m *Model) SetWidth(width int) {

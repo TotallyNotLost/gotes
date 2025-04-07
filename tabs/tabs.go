@@ -48,13 +48,11 @@ func (m *Model) SetFormatter(formatter formatter.Formatter) {
 }
 
 func (m *Model) SetHeight(height int) {
-	// Subtract to account for the tab view top
-	m.height = height - 5
+	m.height = height
 }
 
 func (m *Model) SetWidth(width int) {
-	// Subtract to account for the tab view sides
-	m.width = width - 3
+	m.width = width
 }
 
 func (m Model) GetTabs() []Tab {
@@ -90,6 +88,7 @@ func (m Model) View() string {
 	doc := strings.Builder{}
 
 	var renderedTabs []string
+	var totalWidth int
 
 	for i, tab := range m.tabs {
 		var style lipgloss.Style
@@ -99,13 +98,22 @@ func (m Model) View() string {
 		} else {
 			style = inactiveTabStyle
 		}
-		renderedTabs = append(renderedTabs, style.Render(tab.title))
+		tb := style.Render(tab.title)
+		totalWidth += lipgloss.Width(tb)
+		if totalWidth >= m.width {
+			row := lipgloss.JoinHorizontal(lipgloss.Top, renderedTabs...)
+			doc.WriteString(row)
+			doc.WriteString("\n")
+			renderedTabs = []string{}
+			totalWidth = lipgloss.Width(tb)
+		}
+		renderedTabs = append(renderedTabs, tb)
 	}
 
 	row := lipgloss.JoinHorizontal(lipgloss.Top, renderedTabs...)
 	doc.WriteString(row)
 	doc.WriteString("\n")
-	doc.WriteString(windowStyle.Width(m.width).Height(m.height).Render(m.body()))
+	doc.WriteString(windowStyle.Width(m.width - 3).Height(m.height - lipgloss.Height(doc.String())).Render(m.body()))
 	return docStyle.Render(doc.String())
 }
 
