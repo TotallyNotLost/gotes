@@ -78,18 +78,27 @@ func (m viewportModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.mode = browsing
 		return m, nil
 	case gotescmd.EditEntryMsg:
-		entry, ok := lo.Find(m.notes, func(item markdown.Entry) bool {
-			return item.Id() == msg.GetId()
-		})
-		if !ok {
-			panic(fmt.Sprintf("Can't find entry %s", msg.GetId()))
+		var id string
+		var entry markdown.Entry
+
+		if msg.GetId() == "" {
+			id = uuid.New().String()
+		} else {
+			var ok bool
+			entry, ok = lo.Find(m.notes, func(item markdown.Entry) bool {
+				return item.Id() == id
+			})
+			if !ok {
+				panic(fmt.Sprintf("Can't find entry %s", msg.GetId()))
+			}
 		}
+
 		body := entry.Title() + "\n\n" + strings.TrimSpace(removeMetadata(removeMetadata(entry.Body(), "id"), "tags"))
 		metadata := markdown.GetMetadata(entry.Body())
 		tags, _ := metadata["tags"]
 
-		m.editor.SetId(entry.Id())
-		m.editor.SetBody(body)
+		m.editor.SetId(id)
+		m.editor.SetBody(strings.TrimSpace(body))
 		m.editor.SetTags(tags)
 		m.mode = editing
 		return m, nil
@@ -132,10 +141,7 @@ func (m viewportModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			}
 		case "n":
-			m.editor.SetId(uuid.New().String())
-			m.editor.SetBody("")
-			m.editor.SetTags("")
-			m.mode = editing
+			return m, gotescmd.EditEntry("")
 		case "e":
 			i, ok := m.list.SelectedItem().(item)
 			if ok {
@@ -274,7 +280,7 @@ func main() {
 		viewport:  vp,
 		list:      l,
 		viewer:    viewer,
-		editor: editor.New(),
+		editor:    editor.New(),
 		notes:     notes,
 		noteInfos: noteInfos,
 	}, tea.WithAltScreen())

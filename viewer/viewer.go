@@ -5,6 +5,7 @@ import (
 	"github.com/TotallyNotLost/gotes/formatter"
 	"github.com/TotallyNotLost/gotes/markdown"
 	"github.com/TotallyNotLost/gotes/tabs"
+	"github.com/TotallyNotLost/gotes/tags"
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
@@ -40,7 +41,7 @@ type Model struct {
 
 func (m *Model) SetHeight(height int) {
 	// Subtract the height of helpView() and the title bar at the top.
-	m.tabs.SetHeight(height - lipgloss.Height(renderTitle(lo.LastOrEmpty(m.revisions))) - lipgloss.Height(m.helpView()))
+	m.tabs.SetHeight(height - lipgloss.Height(renderTitle(lo.LastOrEmpty(m.revisions))) - lipgloss.Height(m.helpView()) - 20)
 }
 
 func (m *Model) SetWidth(width int) {
@@ -89,10 +90,12 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 }
 
 func (m Model) View() string {
-	title := renderTitle(m.getActiveRevision())
+	revision := m.getActiveRevision()
+	title := renderTitle(revision)
 	body := m.tabs.View()
+	tags := lipgloss.JoinHorizontal(lipgloss.Bottom, "  ", tags.RenderTags(revision.Tags()))
 
-	return lipgloss.JoinVertical(lipgloss.Left, title, body, m.helpView())
+	return lipgloss.JoinVertical(lipgloss.Left, title, body, tags, m.helpView())
 }
 
 func (m Model) ShortHelp() []key.Binding {
@@ -117,7 +120,7 @@ func renderTitle(note markdown.Entry) string {
 }
 
 func (m Model) getActiveRevision() markdown.Entry {
-	return lo.LastOrEmpty(m.revisions)
+	return lo.FirstOrEmpty(m.revisions)
 }
 
 func (m Model) helpView() string {
