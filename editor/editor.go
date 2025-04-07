@@ -82,8 +82,8 @@ func (m *Model) SetId(id string) {
 	m.id = id
 }
 
-func (m *Model) SetBody(body string) {
-	m.textarea.SetValue(body)
+func (m *Model) SetText(text string) {
+	m.textarea.SetValue(text)
 }
 
 func (m *Model) SetTags(tags string) {
@@ -122,10 +122,10 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 			m.tagsInput.TextStyle = focusedInputStyle
 		case key.Matches(msg, m.keyMap.Submit) && m.state == writingTags:
 			id := m.id
-			body := m.textarea.Value()
+			text := m.textarea.Value()
 			tags := m.tagsInput.Value()
 
-			return m, gotescmd.NewEntry(id, body, strings.Split(tags, ","))
+			return m, gotescmd.NewEntry(id, text, strings.Split(tags, ","))
 		}
 	}
 

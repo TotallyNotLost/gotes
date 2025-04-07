@@ -9,7 +9,6 @@ import (
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/glamour"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/samber/lo"
 	"strconv"
@@ -40,8 +39,8 @@ type Model struct {
 }
 
 func (m *Model) SetHeight(height int) {
-	// Subtract the height of helpView() and the title bar at the top.
-	m.tabs.SetHeight(height - lipgloss.Height(renderTitle(lo.LastOrEmpty(m.revisions))) - lipgloss.Height(m.helpView()) - 2)
+	// Subtract the height of tabs and help.
+	m.tabs.SetHeight(height - 2 - lipgloss.Height(m.helpView()))
 }
 
 func (m *Model) SetWidth(width int) {
@@ -56,7 +55,7 @@ func (m *Model) SetRevisions(revisions []markdown.Entry) {
 		if i == 0 {
 			title += " (latest)"
 		}
-		return tabs.NewTab(title, revision.Body())
+		return tabs.NewTab(title, revision.Text())
 	})
 	m.tabs.SetTabs(tabs)
 }
@@ -91,11 +90,10 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 
 func (m Model) View() string {
 	revision := m.getActiveRevision()
-	title := renderTitle(revision)
 	body := m.tabs.View()
 	tags := lipgloss.JoinHorizontal(lipgloss.Bottom, "  ", tags.RenderTags(revision.Tags()))
 
-	return lipgloss.JoinVertical(lipgloss.Left, title, body, tags, m.helpView())
+	return lipgloss.JoinVertical(lipgloss.Left, body, tags, m.helpView())
 }
 
 func (m Model) ShortHelp() []key.Binding {
@@ -110,13 +108,6 @@ func (m Model) ShortHelp() []key.Binding {
 
 func (m Model) FullHelp() [][]key.Binding {
 	return [][]key.Binding{m.ShortHelp()}
-}
-
-func renderTitle(note markdown.Entry) string {
-	md := "# " + note.Title()
-	out, _ := glamour.Render(md, "dark")
-
-	return out
 }
 
 func (m Model) getActiveRevision() markdown.Entry {

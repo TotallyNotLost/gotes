@@ -18,7 +18,7 @@ import "slices"
 import "strings"
 
 type item struct {
-	id, title, content string
+	id, text string
 	tags               []string
 }
 
@@ -30,9 +30,9 @@ const (
 	editing       = 2
 )
 
-func (i item) Title() string       { return i.title }
+func (i item) Title() string       { return lo.FirstOrEmpty(strings.Split(i.text, "\n")) }
 func (i item) Description() string { return strings.Join(i.tags, ",") }
-func (i item) FilterValue() string { return i.title + " " + i.Description() }
+func (i item) FilterValue() string { return i.text + " " + i.Description() }
 
 var mainStyle = lipgloss.NewStyle().
 	MarginLeft(2).
@@ -93,12 +93,12 @@ func (m viewportModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 
-		body := entry.Title() + "\n\n" + strings.TrimSpace(removeMetadata(removeMetadata(entry.Body(), "id"), "tags"))
-		metadata := markdown.GetMetadata(entry.Body())
+		text := strings.TrimSpace(removeMetadata(removeMetadata(entry.Text(), "id"), "tags"))
+		metadata := markdown.GetMetadata(entry.Text())
 		tags, _ := metadata["tags"]
 
 		m.editor.SetId(id)
-		m.editor.SetBody(strings.TrimSpace(body))
+		m.editor.SetText(strings.TrimSpace(text))
 		m.editor.SetTags(tags)
 		m.mode = editing
 		return m, nil
@@ -189,7 +189,7 @@ func loadItems(notes []markdown.Entry) []list.Item {
 
 		isLatestRevision := i == noteInfos[note.Id()][len(noteInfos[note.Id()])-1].index
 		if isLatestRevision && !lo.Contains(note.Tags(), "Done") {
-			itm := item{id: note.Id(), title: note.Title(), content: note.Body(), tags: note.Tags()}
+			itm := item{id: note.Id(), text: note.Text(), tags: note.Tags()}
 			items = append(items, itm)
 		}
 	}
@@ -202,15 +202,11 @@ func loadEntries() []markdown.Entry {
 
 	notes := strings.SplitSeq(ReadFile(os.Args[1]), "\n---\n")
 
-	for n := range notes {
-		parts := strings.SplitN(n, "\n", 2)
-		title := parts[0]
-		body := parts[1]
-
+	for text := range notes {
 		var id string
 		var tags []string
 
-		metadata := markdown.GetMetadata(n)
+		metadata := markdown.GetMetadata(text)
 		if i, ok := metadata["id"]; ok {
 			id = i
 		}
@@ -218,7 +214,7 @@ func loadEntries() []markdown.Entry {
 			tags = strings.Split(t, ",")
 		}
 
-		itm := markdown.NewEntry(id, title, body, tags)
+		itm := markdown.NewEntry(id, text, tags)
 
 		items = append(items, itm)
 	}
