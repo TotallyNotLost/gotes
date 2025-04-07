@@ -88,13 +88,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 
 func (m Model) View() string {
 	title := renderTitle(lo.LastOrEmpty(m.revisions))
-	var body string
-
-	// if len(m.revisions) == 1 {
-	// body = m.tabs.GetTabs()[0].GetBody()
-	// } else {
-	body = m.tabs.View()
-	// }
+	body := m.tabs.View()
 
 	return lipgloss.JoinVertical(lipgloss.Left, title, body, m.helpView())
 }
