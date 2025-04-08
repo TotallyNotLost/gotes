@@ -1,40 +1,59 @@
 package tabs
 
 import (
+	"fmt"
 	"github.com/TotallyNotLost/gotes/formatter"
 	"github.com/charmbracelet/bubbles/key"
+	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"strings"
 )
 
-func tabBorderWithBottom(left, middle, right string) lipgloss.Border {
-	border := lipgloss.RoundedBorder()
-	border.BottomLeft = left
-	border.Bottom = middle
-	border.BottomRight = right
-	return border
-}
-
 var (
-	inactiveTabBorder = tabBorderWithBottom("┴", "─", "┴")
-	activeTabBorder   = tabBorderWithBottom("┘", " ", "└")
-	docStyle          = lipgloss.NewStyle().Padding(0, 1, 0, 1)
-	highlightColor    = lipgloss.AdaptiveColor{Light: "#874BFD", Dark: "7"}
-	inactiveTabStyle  = lipgloss.NewStyle().BorderForeground(lipgloss.Color("241")).Foreground(lipgloss.Color("241")).Border(lipgloss.NormalBorder())
-	activeTabStyle    = inactiveTabStyle.BorderForeground(lipgloss.Color("7")).Foreground(lipgloss.Color("7"))
-	helpStyle         = lipgloss.NewStyle().Foreground(lipgloss.Color("241")).Render
-	windowStyle       = lipgloss.NewStyle().BorderForeground(highlightColor).Border(lipgloss.NormalBorder())
+	docStyle      = lipgloss.NewStyle()
+	viewportStyle = docStyle.
+			BorderForeground(highlightColor).
+			Border(lipgloss.NormalBorder())
+	tabsStyle        = lipgloss.NewStyle()
+	highlightColor   = lipgloss.AdaptiveColor{Light: "#874BFD", Dark: "7"}
+	inactiveTabStyle = lipgloss.NewStyle().
+				BorderForeground(lipgloss.Color("241")).
+				Foreground(lipgloss.Color("241")).
+				Border(lipgloss.NormalBorder())
+	activeTabStyle = inactiveTabStyle.
+			BorderForeground(lipgloss.Color("7")).
+			Foreground(lipgloss.Color("7"))
+	statusBarStyle = docStyle.
+			Foreground(lipgloss.AdaptiveColor{Light: "#343433", Dark: "#C1C6B2"}).
+			Background(lipgloss.AdaptiveColor{Light: "#D9DCCF", Dark: "#353533"})
+	statusStyle = lipgloss.NewStyle().
+			Inherit(statusBarStyle).
+			Foreground(lipgloss.Color("#FFFDF5")).
+			Background(lipgloss.Color("#6124DF")).
+			Padding(0, 1).
+			MarginRight(1)
+	statusTextStyle = lipgloss.NewStyle().Inherit(statusBarStyle)
+	scrollStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#FFFDF5")).
+			Padding(0, 1).
+			Background(lipgloss.Color("#A550DF")).
+			Align(lipgloss.Right)
 )
 
 func New() Model {
+	vp := viewport.New(0, 0)
+	vp.Style = viewportStyle
 	return Model{
+		viewport:  vp,
 		formatter: formatter.Default,
 		keyMap:    defaultKeyMap(),
 	}
 }
 
 type Model struct {
+	viewport  viewport.Model
+	entryId   string
 	tabs      []Tab
 	activeTab int
 	formatter formatter.Formatter
@@ -43,16 +62,24 @@ type Model struct {
 	keyMap    keyMap
 }
 
+func (m *Model) SetEntryId(entryId string) {
+	m.entryId = entryId
+}
+
 func (m *Model) SetFormatter(formatter formatter.Formatter) {
 	m.formatter = formatter
 }
 
 func (m *Model) SetHeight(height int) {
 	m.height = height
+	tabsHeight := lipgloss.Height(m.tabsView())
+	verticalHeight := tabsHeight + lipgloss.Height(m.footerView())
+	m.viewport.Height = height - verticalHeight - 3
 }
 
 func (m *Model) SetWidth(width int) {
 	m.width = width
+	m.viewport.Width = width
 }
 
 func (m Model) GetTabs() []Tab {
@@ -81,10 +108,19 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 		}
 	}
 
-	return m, nil
+	var cmd tea.Cmd
+
+	m.viewport.SetContent(m.content())
+	m.viewport, cmd = m.viewport.Update(msg)
+	return m, cmd
 }
 
 func (m Model) View() string {
+	m.viewport.SetContent(m.content())
+	return lipgloss.JoinVertical(lipgloss.Left, m.tabsView(), m.viewport.View(), m.footerView())
+}
+
+func (m Model) tabsView() string {
 	doc := strings.Builder{}
 
 	var renderedTabs []string
@@ -101,7 +137,7 @@ func (m Model) View() string {
 		tb := style.Render(tab.title)
 		totalWidth += lipgloss.Width(tb)
 		if totalWidth >= m.width {
-			row := lipgloss.JoinHorizontal(lipgloss.Top, renderedTabs...)
+			row := lipgloss.JoinHorizontal(lipgloss.Bottom, renderedTabs...)
 			doc.WriteString(row)
 			doc.WriteString("\n")
 			renderedTabs = []string{}
@@ -110,11 +146,13 @@ func (m Model) View() string {
 		renderedTabs = append(renderedTabs, tb)
 	}
 
-	row := lipgloss.JoinHorizontal(lipgloss.Top, renderedTabs...)
+	row := lipgloss.JoinHorizontal(lipgloss.Bottom, renderedTabs...)
 	doc.WriteString(row)
-	doc.WriteString("\n")
-	doc.WriteString(windowStyle.Width(m.width - 3).Height(m.height - lipgloss.Height(doc.String())).Render(m.body()))
-	return docStyle.Render(doc.String())
+	return tabsStyle.Render(doc.String())
+}
+
+func (m Model) content() string {
+	return docStyle.Render(m.body())
 }
 
 func (m Model) body() string {
@@ -123,6 +161,32 @@ func (m Model) body() string {
 	}
 
 	return m.formatter.Format(m.tabs[m.activeTab].body)
+}
+
+func (m Model) footerView() string {
+	scrollPercent := fmt.Sprintf("%3.f%%", m.viewport.ScrollPercent()*100)
+
+	w := lipgloss.Width
+
+	format := "Markdown"
+	if m.formatter == formatter.Default {
+		format = "Raw"
+		statusStyle = statusStyle.
+			Background(lipgloss.Color("#FF5F87"))
+	}
+	statusKey := statusStyle.Render(format)
+	scroll := scrollStyle.Render(scrollPercent)
+	statusVal := statusTextStyle.
+		Width(m.width - w(statusKey) - w(scroll)).
+		Render(m.entryId)
+
+	bar := lipgloss.JoinHorizontal(lipgloss.Top,
+		statusKey,
+		statusVal,
+		scroll,
+	)
+
+	return statusBarStyle.Width(m.width).Render(bar)
 }
 
 func (m Model) ShortHelp() []key.Binding {
@@ -163,12 +227,3 @@ func defaultKeyMap() keyMap {
 		Next:     key.NewBinding(key.WithKeys("right", "l", "n", "tab"), key.WithHelp("→/l", "next")),
 	}
 }
-
-type defaultFormatter struct {
-}
-
-func (f defaultFormatter) Format(s string) string {
-	return s
-}
-
-var DefaultFormatter = defaultFormatter{}

@@ -19,12 +19,5 @@ func RenderTags(tags []string) string {
 		tgs = append(tgs, tag)
 	}
 
-	/*
-		for i := 0; i <= 255; i++ {
-			tag := tagsStyle.Foreground(lipgloss.Color(strconv.Itoa(i))).Render(strconv.Itoa(i))
-			tgs = append(tgs, tag)
-		}
-	*/
-
 	return lipgloss.JoinHorizontal(lipgloss.Bottom, tgs...)
 }

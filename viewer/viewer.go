@@ -14,7 +14,10 @@ import (
 	"strconv"
 )
 
-var helpStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("241")).PaddingLeft(2).Render
+var (
+	viewerStyle = lipgloss.NewStyle().Padding(0, 2)
+	helpStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("241")).PaddingTop(1).Render
+)
 
 func New(file string) Model {
 	mdFormatter := formatter.NewMarkdownFormatter(file)
@@ -39,13 +42,13 @@ type Model struct {
 }
 
 func (m *Model) SetHeight(height int) {
-	// Subtract the height of tabs and help.
-	m.tabs.SetHeight(height - 2 - lipgloss.Height(m.helpView()))
+	m.tabs.SetHeight(height - lipgloss.Height(m.tagsView()) - lipgloss.Height(m.helpView()))
 }
 
 func (m *Model) SetWidth(width int) {
-	m.tabs.SetWidth(width)
-	m.markdownFormatter.SetWidth(width - 2)
+	paddingWidth := lipgloss.Width(viewerStyle.Render(""))
+	m.tabs.SetWidth(width - paddingWidth)
+	m.markdownFormatter.SetWidth(width - paddingWidth)
 }
 
 func (m *Model) SetRevisions(revisions []markdown.Entry) {
@@ -58,6 +61,7 @@ func (m *Model) SetRevisions(revisions []markdown.Entry) {
 		return tabs.NewTab(title, revision.Text())
 	})
 	m.tabs.SetTabs(tabs)
+	m.tabs.SetEntryId(m.getActiveRevision().Id())
 }
 
 func (m Model) Init() tea.Cmd {
@@ -77,7 +81,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 			if m.renderMarkdown {
 				m.tabs.SetFormatter(m.markdownFormatter)
 			} else {
-				m.tabs.SetFormatter(tabs.DefaultFormatter)
+				m.tabs.SetFormatter(formatter.Default)
 			}
 
 		}
@@ -89,11 +93,16 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 }
 
 func (m Model) View() string {
-	revision := m.getActiveRevision()
 	body := m.tabs.View()
-	tags := lipgloss.JoinHorizontal(lipgloss.Bottom, "  ", tags.RenderTags(revision.Tags()))
 
-	return lipgloss.JoinVertical(lipgloss.Left, body, tags, m.helpView())
+	return viewerStyle.Render(
+		lipgloss.JoinVertical(lipgloss.Left, m.tagsView(), body, m.helpView()),
+	)
+}
+
+func (m Model) tagsView() string {
+	revision := m.getActiveRevision()
+	return lipgloss.JoinHorizontal(lipgloss.Center, tags.RenderTags(revision.Tags()))
 }
 
 func (m Model) ShortHelp() []key.Binding {

@@ -35,10 +35,9 @@ func (i item) Description() string { return strings.Join(i.tags, ",") }
 func (i item) FilterValue() string { return i.text + " " + i.Description() }
 
 var mainStyle = lipgloss.NewStyle().
-	MarginLeft(2).
+	Margin(0, 2).
 	BorderStyle(lipgloss.RoundedBorder()).
-	BorderForeground(lipgloss.Color("62")).
-	PaddingRight(2)
+	BorderForeground(lipgloss.Color("62"))
 var pageStyle = lipgloss.NewStyle()
 
 type viewportModel struct {
@@ -61,7 +60,7 @@ func (m viewportModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.viewport.Height = msg.Height - 2
-		m.viewport.Width = msg.Width - 10
+		m.viewport.Width = msg.Width - lipgloss.Width(mainStyle.Render(""))
 		m.list.SetSize(m.viewport.Width, m.viewport.Height)
 		m.viewer.SetHeight(m.viewport.Height)
 		m.viewer.SetWidth(m.viewport.Width)
