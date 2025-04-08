@@ -72,9 +72,12 @@ func (m *Model) SetFormatter(formatter formatter.Formatter) {
 
 func (m *Model) SetHeight(height int) {
 	m.height = height
-	tabsHeight := lipgloss.Height(m.tabsView())
-	verticalHeight := tabsHeight + lipgloss.Height(m.footerView())
-	m.viewport.Height = height - verticalHeight - 3
+	m.AdjustHeight()
+}
+
+func (m *Model) AdjustHeight() {
+	verticalHeight := lipgloss.Height(m.tabsView()) + lipgloss.Height(m.footerView())
+	m.viewport.Height = m.height - verticalHeight - 1
 }
 
 func (m *Model) SetWidth(width int) {

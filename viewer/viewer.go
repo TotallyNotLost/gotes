@@ -62,6 +62,7 @@ func (m *Model) SetRevisions(revisions []markdown.Entry) {
 	})
 	m.tabs.SetTabs(tabs)
 	m.tabs.SetEntryId(m.getActiveRevision().Id())
+	m.tabs.AdjustHeight()
 }
 
 func (m Model) Init() tea.Cmd {
