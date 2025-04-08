@@ -55,7 +55,7 @@ type Model struct {
 	viewport  viewport.Model
 	entryId   string
 	tabs      []Tab
-	activeTab int
+	ActiveTab int
 	formatter formatter.Formatter
 	height    int
 	width     int
@@ -90,7 +90,7 @@ func (m Model) GetTabs() []Tab {
 }
 
 func (m *Model) SetTabs(tabs []Tab) {
-	m.activeTab = 0
+	m.ActiveTab = 0
 	m.tabs = tabs
 }
 
@@ -103,10 +103,10 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, m.keyMap.Previous):
-			m.activeTab = max(m.activeTab-1, 0)
+			m.ActiveTab = max(m.ActiveTab-1, 0)
 			return m, nil
 		case key.Matches(msg, m.keyMap.Next):
-			m.activeTab = min(m.activeTab+1, len(m.tabs)-1)
+			m.ActiveTab = min(m.ActiveTab+1, len(m.tabs)-1)
 			return m, nil
 		}
 	}
@@ -131,7 +131,7 @@ func (m Model) tabsView() string {
 
 	for i, tab := range m.tabs {
 		var style lipgloss.Style
-		isActive := i == m.activeTab
+		isActive := i == m.ActiveTab
 		if isActive {
 			style = activeTabStyle
 		} else {
@@ -159,11 +159,11 @@ func (m Model) content() string {
 }
 
 func (m Model) body() string {
-	if len(m.tabs) <= m.activeTab {
+	if len(m.tabs) <= m.ActiveTab {
 		return ""
 	}
 
-	return m.formatter.Format(m.tabs[m.activeTab].body)
+	return m.formatter.Format(m.tabs[m.ActiveTab].body)
 }
 
 func (m Model) footerView() string {

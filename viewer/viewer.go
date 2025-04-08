@@ -121,7 +121,10 @@ func (m Model) FullHelp() [][]key.Binding {
 }
 
 func (m Model) getActiveRevision() markdown.Entry {
-	return lo.FirstOrEmpty(m.revisions)
+	if m.tabs.ActiveTab >= len(m.revisions) {
+		return markdown.Entry{}
+	}
+	return m.revisions[m.tabs.ActiveTab]
 }
 
 func (m Model) helpView() string {
