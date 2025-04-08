@@ -13,7 +13,6 @@ import "github.com/TotallyNotLost/gotes/editor"
 import "github.com/TotallyNotLost/gotes/markdown"
 import "github.com/TotallyNotLost/gotes/viewer"
 import "log"
-import "regexp"
 import "slices"
 import "strings"
 
@@ -92,7 +91,7 @@ func (m viewportModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 
-		text := strings.TrimSpace(removeMetadata(removeMetadata(entry.Text(), "id"), "tags"))
+		text := strings.TrimSpace(markdown.RemoveMetadata(markdown.RemoveMetadata(entry.Text(), "id"), "tags"))
 		metadata := markdown.GetMetadata(entry.Text())
 		tags, _ := metadata["tags"]
 
@@ -294,8 +293,3 @@ func ReadFile(file string) string {
 	return string(b)
 }
 
-func removeMetadata(md string, key string) string {
-	r, _ := regexp.Compile("\\[_metadata_:" + key + "\\]:# \"[^\"]*\"")
-
-	return r.ReplaceAllString(md, "")
-}

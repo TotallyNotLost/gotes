@@ -3,6 +3,7 @@ package markdown
 import (
 	"fmt"
 	"github.com/samber/lo"
+	"github.com/charmbracelet/lipgloss"
 	"os"
 	"regexp"
 	"strconv"
@@ -50,8 +51,10 @@ func (p Parser) expandIncludes(md string) string {
 
 	return r.ReplaceAllStringFunc(md, func(metadata string) string {
 		identifier := p.normalizeIdentifier(r.FindStringSubmatch(metadata)[1])
+		text := p.getTextForIdentifier(identifier)
+		sanitized := strings.TrimSpace(RemoveMetadata(RemoveMetadata(text, "id"), "tags"))
 
-		return p.getTextForIdentifier(identifier)
+		return lipgloss.NewStyle().Border(lipgloss.NormalBorder()).Render(sanitized)
 	})
 }
 
@@ -65,7 +68,7 @@ func (p Parser) normalizeIdentifier(incl string) string {
 		file, selector string
 	)
 
-	selreg, _ := regexp.Compile("(^\\$.+$)|(^\\d+(-\\d+)?$)")
+	selreg, _ := regexp.Compile("(^\\$.+$)|(^#.+$)|(^\\d+(-\\d+)?$)")
 
 	if strings.Contains(incl, ":") {
 		parts := strings.SplitN(incl, ":", 2)

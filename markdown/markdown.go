@@ -52,6 +52,12 @@ func GetMetadata(text string) map[string]string {
 	return o
 }
 
+func RemoveMetadata(md string, key string) string {
+	r, _ := regexp.Compile("\\[_metadata_:" + key + "\\]:# \"[^\"]*\"")
+
+	return r.ReplaceAllString(md, "")
+}
+
 func isMetadata(text string) bool {
 	r, _ := regexp.Compile("^\\[_metadata_:\\w+\\]:# \".*\"$")
 
