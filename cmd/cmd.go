@@ -51,3 +51,19 @@ type EditEntryMsg struct {
 func (msg EditEntryMsg) GetId() string {
 	return msg.id
 }
+
+func ViewEntry(id string) tea.Cmd {
+	return func() tea.Msg {
+		return ViewEntryMsg {
+			id: id,
+		}
+	}
+}
+
+type ViewEntryMsg struct {
+	id string
+}
+
+func (msg ViewEntryMsg) GetId() string {
+	return msg.id
+}

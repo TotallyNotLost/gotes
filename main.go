@@ -99,6 +99,21 @@ func (m viewportModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.editor.SetTags(tags)
 		m.mode = editing
 		return m, nil
+	case gotescmd.ViewEntryMsg:
+		noteInfos := m.noteInfos[msg.GetId()]
+		notes := []markdown.Entry{}
+		for _, noteInfo := range noteInfos {
+			notes = append(notes, m.notes[noteInfo.index])
+		}
+
+		m.mode = viewing
+
+		revisions := []markdown.Entry{}
+		for _, no := range slices.Backward(notes) {
+			revisions = append(revisions, no)
+		}
+		m.viewer.SetRevisions(revisions)
+		return m, nil
 	}
 
 	m.viewer, vcmd = m.viewer.Update(msg)
@@ -122,20 +137,7 @@ func (m viewportModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "enter":
 			i, ok := m.list.SelectedItem().(item)
 			if ok {
-				noteInfos := m.noteInfos[i.id]
-				notes := []markdown.Entry{}
-				for _, noteInfo := range noteInfos {
-					notes = append(notes, m.notes[noteInfo.index])
-				}
-
-				m.mode = viewing
-
-				revisions := []markdown.Entry{}
-				for _, no := range slices.Backward(notes) {
-					revisions = append(revisions, no)
-				}
-				m.viewer.SetRevisions(revisions)
-				return m, nil
+				return m, gotescmd.ViewEntry(i.id)
 			}
 		case "n":
 			return m, gotescmd.EditEntry("")
