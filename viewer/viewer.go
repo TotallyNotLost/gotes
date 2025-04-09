@@ -120,7 +120,7 @@ func (m Model) View() string {
 	body := m.tabs.View()
 	viewer := lipgloss.JoinVertical(lipgloss.Left, m.tagsView(), body, m.helpView())
 
-	if m.width < 120 {
+	if m.width < minWidthForRelated {
 		return lipgloss.JoinHorizontal(lipgloss.Top, viewerStyle.Render(viewer))
 	}
 
@@ -135,6 +135,9 @@ func (m Model) tagsView() string {
 func (m Model) relatedView() string {
 	relatedIdentifier := m.getActiveRevision().RelatedIdentifier()
 	entries := markdown.GetEntriesWithTags(os.Args[1], []string{strings.TrimLeft(relatedIdentifier, "#")})
+	entries = lo.Filter(entries, func(entry markdown.Entry, index int) bool {
+		return entry.Id() != m.getActiveRevision().Id()
+	})
 
 	items := lo.Map(entries, func(entry markdown.Entry, index int) list.Item {
 		return item{id: entry.Id(), text: entry.Text(), tags: entry.Tags()}
