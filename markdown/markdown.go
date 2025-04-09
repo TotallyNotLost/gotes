@@ -1,13 +1,41 @@
 package markdown
 
 import (
+	"log"
+	"os"
 	"github.com/samber/lo"
 	"regexp"
 	"strings"
 )
 
+func LoadEntries(file string, filter func(Entry) bool) []Entry {
+	items := []Entry{}
+
+	notes := SplitEntries(ReadFile(file))
+
+	for _, text := range notes {
+		metadata := GetMetadata(text)
+
+		var tags []string
+		if t, ok := metadata["tags"]; ok {
+			tags = strings.Split(t, ",")
+		}
+
+		id := metadata["id"]
+		relatedIdentifier := metadata["related"]
+
+		itm := NewEntry(id, text, tags, relatedIdentifier)
+
+		if filter(itm) {
+			items = append(items, itm)
+		}
+	}
+
+	return items
+}
+
 func SplitEntries(text string) []string {
-	notes := strings.Split(text, "---")
+	notes := strings.Split(text, "\n---\n")
 
 	for index, note := range notes {
 		notes[index] = strings.TrimSpace(note)
@@ -31,6 +59,13 @@ func GetEntry(content string, id string) string {
 	}
 
 	return note
+}
+
+// Returns all entries that have at least one of the provided tags.
+func GetEntriesWithTags(content string, tags []string) []Entry {
+	return LoadEntries(content, func(entry Entry) bool {
+		return lo.Some(entry.Tags(), tags)
+	})
 }
 
 func GetMetadata(text string) map[string]string {
@@ -62,4 +97,17 @@ func isMetadata(text string) bool {
 	r, _ := regexp.Compile("^\\[_metadata_:\\w+\\]:# \".*\"$")
 
 	return r.MatchString(text)
+}
+
+func ReadFile(file string) string {
+	b, err := os.ReadFile(file)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return string(b)
+}
+
+func AllEntriesFilter(entry Entry) bool {
+	return true
 }

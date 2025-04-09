@@ -12,7 +12,6 @@ import gotescmd "github.com/TotallyNotLost/gotes/cmd"
 import "github.com/TotallyNotLost/gotes/editor"
 import "github.com/TotallyNotLost/gotes/markdown"
 import "github.com/TotallyNotLost/gotes/viewer"
-import "log"
 import "slices"
 import "strings"
 
@@ -70,7 +69,7 @@ func (m viewportModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 	case gotescmd.NewEntryMsg:
 		writeEntry(msg.GetId(), msg.GetBody(), msg.GetTags())
-		m.notes = loadEntries()
+		m.notes = markdown.LoadEntries(os.Args[1], markdown.AllEntriesFilter)
 		m.list.SetItems(loadItems(m.notes))
 		m.noteInfos = makeNoteInfos(m.notes)
 		m.mode = browsing
@@ -195,31 +194,6 @@ func loadItems(notes []markdown.Entry) []list.Item {
 	return items
 }
 
-func loadEntries() []markdown.Entry {
-	items := []markdown.Entry{}
-
-	notes := strings.SplitSeq(ReadFile(os.Args[1]), "\n---\n")
-
-	for text := range notes {
-		var id string
-		var tags []string
-
-		metadata := markdown.GetMetadata(text)
-		if i, ok := metadata["id"]; ok {
-			id = i
-		}
-		if t, ok := metadata["tags"]; ok {
-			tags = strings.Split(t, ",")
-		}
-
-		itm := markdown.NewEntry(id, text, tags)
-
-		items = append(items, itm)
-	}
-
-	return items
-}
-
 func writeEntry(id string, body string, tags []string) {
 	f, err := os.OpenFile(os.Args[1], os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
 	if err != nil {
@@ -265,7 +239,7 @@ func makeNoteInfos(notes []markdown.Entry) map[string][]noteInfo {
 func main() {
 	vp := viewport.New(0, 0)
 
-	notes := loadEntries()
+	notes := markdown.LoadEntries(os.Args[1], markdown.AllEntriesFilter)
 	l := newList(notes)
 	noteInfos := makeNoteInfos(notes)
 	viewer := viewer.New(os.Args[1])
@@ -283,13 +257,3 @@ func main() {
 		panic(err)
 	}
 }
-
-func ReadFile(file string) string {
-	b, err := os.ReadFile(file)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	return string(b)
-}
-
