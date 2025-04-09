@@ -1,24 +1,21 @@
 package main
 
-import "fmt"
-import "os"
-import tea "github.com/charmbracelet/bubbletea"
-import "github.com/charmbracelet/bubbles/list"
-import "github.com/charmbracelet/bubbles/viewport"
-import "github.com/charmbracelet/lipgloss"
-import "github.com/google/uuid"
-import "github.com/samber/lo"
-import gotescmd "github.com/TotallyNotLost/gotes/cmd"
-import "github.com/TotallyNotLost/gotes/editor"
-import "github.com/TotallyNotLost/gotes/markdown"
-import "github.com/TotallyNotLost/gotes/viewer"
-import "slices"
-import "strings"
-
-type item struct {
-	id, text string
-	tags     []string
-}
+import (
+	"github.com/samber/lo"
+	"slices"
+	"fmt"
+	"github.com/google/uuid"
+	"github.com/TotallyNotLost/gotes/editor"
+	gotescmd "github.com/TotallyNotLost/gotes/cmd"
+	"github.com/TotallyNotLost/gotes/list"
+	"github.com/TotallyNotLost/gotes/viewer"
+	"strings"
+	"github.com/TotallyNotLost/gotes/markdown"
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
+	blist "github.com/charmbracelet/bubbles/list"
+	"os"
+)
 
 type mode int
 
@@ -28,42 +25,36 @@ const (
 	editing       = 2
 )
 
-func (i item) Title() string       { return lo.FirstOrEmpty(strings.Split(i.text, "\n")) }
-func (i item) Description() string { return strings.Join(i.tags, ",") }
-func (i item) FilterValue() string { return i.text + " " + i.Description() }
-
 var mainStyle = lipgloss.NewStyle().
 	Margin(0, 2).
 	BorderStyle(lipgloss.RoundedBorder()).
 	BorderForeground(lipgloss.Color("62"))
-var pageStyle = lipgloss.NewStyle()
 
-type viewportModel struct {
-	viewport  viewport.Model
-	list      list.Model
-	viewer    viewer.Model
-	editor    editor.Model
-	mode      mode
+type model struct {
+	mode   mode
+	list   list.Model
+	viewer viewer.Model
+	editor editor.Model
 	notes     []markdown.Entry
 	noteInfos map[string][]noteInfo
 }
 
-func (model viewportModel) Init() tea.Cmd {
+func (model model) Init() tea.Cmd {
 	return nil
 }
 
-func (m viewportModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd, vcmd tea.Cmd
 
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
-		m.viewport.Height = msg.Height - 2
-		m.viewport.Width = msg.Width - lipgloss.Width(mainStyle.Render(""))
-		m.list.SetSize(m.viewport.Width, m.viewport.Height)
-		m.viewer.SetHeight(m.viewport.Height)
-		m.viewer.SetWidth(m.viewport.Width)
-		m.editor.SetHeight(m.viewport.Height)
-		m.editor.SetWidth(m.viewport.Width)
+		width := msg.Width - mainStyle.GetWidth()
+		height := msg.Height - 2
+		m.list.SetSize(width, height)
+		m.viewer.SetHeight(height)
+		m.viewer.SetWidth(width)
+		m.editor.SetHeight(height)
+		m.editor.SetWidth(width)
 	case gotescmd.BackMsg:
 		m.mode = browsing
 		return m, nil
@@ -82,8 +73,8 @@ func (m viewportModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			id = uuid.New().String()
 		} else {
 			var ok bool
-			entry, _, ok = lo.FindLastIndexOf(m.notes, func(item markdown.Entry) bool {
-				return item.Id() == id
+			entry, _, ok = lo.FindLastIndexOf(m.notes, func(entry markdown.Entry) bool {
+				return entry.Id() == id
 			})
 			if !ok {
 				panic(fmt.Sprintf("Can't find entry %s", id))
@@ -126,33 +117,12 @@ func (m viewportModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, cmd
 	}
 
-	switch msg := msg.(type) {
-	case tea.KeyMsg:
-		// Don't match any of the keys below if we're actively filtering.
-		if m.list.FilterState() == list.Filtering {
-			m.list, cmd = m.list.Update(msg)
-			return m, cmd
-		}
-		switch msg.String() {
-		case "enter":
-			i, ok := m.list.SelectedItem().(item)
-			if ok {
-				return m, gotescmd.ViewEntry(i.id)
-			}
-		case "n":
-			return m, gotescmd.EditEntry("")
-		case "e":
-			i, ok := m.list.SelectedItem().(item)
-			if ok {
-				return m, gotescmd.EditEntry(i.id)
-			}
-		}
-	}
-	m.list, cmd = m.list.Update(msg)
+	l, cmd := m.list.Update(msg)
+	m.list = l.(list.Model)
 	return m, tea.Batch(cmd, vcmd)
 }
 
-func (m viewportModel) View() string {
+func (m model) View() string {
 	var view string
 
 	switch m.mode {
@@ -164,36 +134,7 @@ func (m viewportModel) View() string {
 		view = m.editor.View()
 	}
 
-	m.viewport.SetContent(pageStyle.Render(view))
-
-	return mainStyle.Render(m.viewport.View())
-}
-
-func newList(notes []markdown.Entry) list.Model {
-	items := loadItems(notes)
-
-	l := list.New(items, list.NewDefaultDelegate(), 0, 0)
-	l.Title = os.Args[1]
-
-	return l
-}
-
-func loadItems(notes []markdown.Entry) []list.Item {
-	items := []list.Item{}
-
-	noteInfos := makeNoteInfos(notes)
-
-	for i := range slices.Backward(notes) {
-		note := notes[i]
-
-		isLatestRevision := i == noteInfos[note.Id()][len(noteInfos[note.Id()])-1].index
-		if isLatestRevision && !lo.Contains(note.Tags(), "Done") {
-			itm := item{id: note.Id(), text: note.Text(), tags: note.Tags()}
-			items = append(items, itm)
-		}
-	}
-
-	return items
+	return view
 }
 
 func writeEntry(id string, body string, tags []string) {
@@ -219,6 +160,43 @@ func writeEntry(id string, body string, tags []string) {
 		f.WriteString("\n[_metadata_:tags]:# \"" + tgs + "\"")
 	}
 }
+func main() {
+	entries := markdown.LoadEntries(os.Args[1], markdown.AllEntriesFilter)
+	noteInfos := makeNoteInfos(entries)
+	items := loadItems(entries)
+	p := tea.NewProgram(&model{
+		list: list.New(lo.Map(items, func(item list.Item, index int) blist.Item {
+			return item
+		})),
+		editor: editor.New(),
+		viewer: viewer.New(os.Args[1]),
+		notes: entries,
+		noteInfos: noteInfos,
+	}, tea.WithAltScreen())
+
+	if _, err := p.Run(); err != nil {
+		panic(err)
+	}
+}
+
+func loadItems(entries []markdown.Entry) []list.Item {
+	items := []list.Item{}
+
+	noteInfos := makeNoteInfos(entries)
+
+	for i := range slices.Backward(entries) {
+		entry := entries[i]
+
+		isLatestRevision := i == noteInfos[entry.Id()][len(noteInfos[entry.Id()])-1].index
+		if isLatestRevision && !lo.Contains(entry.Tags(), "Done") {
+			itm := list.EntryToItem(entry)
+			items = append(items, itm)
+		}
+	}
+
+	return items
+}
+
 
 type noteInfo struct {
 	index int
@@ -236,26 +214,4 @@ func makeNoteInfos(notes []markdown.Entry) map[string][]noteInfo {
 	}
 
 	return m
-}
-
-func main() {
-	vp := viewport.New(0, 0)
-
-	notes := markdown.LoadEntries(os.Args[1], markdown.AllEntriesFilter)
-	l := newList(notes)
-	noteInfos := makeNoteInfos(notes)
-	viewer := viewer.New(os.Args[1])
-
-	p := tea.NewProgram(&viewportModel{
-		viewport:  vp,
-		list:      l,
-		viewer:    viewer,
-		editor:    editor.New(),
-		notes:     notes,
-		noteInfos: noteInfos,
-	}, tea.WithAltScreen())
-
-	if _, err := p.Run(); err != nil {
-		panic(err)
-	}
 }
