@@ -138,7 +138,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 		case key.Matches(msg, m.mode.keyMap.Edit):
 			return m, cmd.EditEntry(m.getActiveRevision())
 		case key.Matches(msg, m.mode.keyMap.View):
-			entry, _ := m.storage.GetLatest(m.relatedList.SelectedItem().(glist.Item).Id())
+			entry := m.relatedList.SelectedItem().(glist.Item).Entry()
 			return m, cmd.ViewEntry(entry)
 		case key.Matches(msg, m.mode.keyMap.ToggleMarkdown):
 			m.renderMarkdown = !m.renderMarkdown

@@ -57,31 +57,14 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.mode = browsing
 		return m, nil
 	case gotescmd.NewEntryMsg:
-		writeEntry(msg.GetEntry())
-		m.storage.AddEntry(msg.GetEntry())
-		items := latestEntriesAsItems(m.storage)
-		m.list.SetItems(lo.Filter(items, func(item list.Item, index int) bool {
-			return item.File() == os.Args[1]
-		}))
+		m.newEntry(msg.GetEntry())
 		return m, gotescmd.ViewEntry(msg.GetEntry())
 	case gotescmd.EditEntryMsg:
 		m.editor.SetEntry(msg.GetEntry())
 		m.mode = editing
 		return m, nil
 	case gotescmd.ViewEntryMsg:
-		entries, ok := m.storage.Get(msg.GetEntry().Id())
-
-		if !ok {
-			panic(fmt.Sprintf("Couldn't find entry for %s", msg.GetEntry().Id()))
-		}
-
-		m.mode = viewing
-
-		revisions := []storage.Entry{}
-		for _, no := range slices.Backward(entries) {
-			revisions = append(revisions, no)
-		}
-		m.viewer.SetRevisions(revisions)
+		m.viewEntry(msg.GetEntry())
 		return m, nil
 	}
 
@@ -98,6 +81,31 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	l, cmd := m.list.Update(msg)
 	m.list = l.(list.Model)
 	return m, tea.Batch(cmd, vcmd)
+}
+
+func (m model) newEntry(entry storage.Entry) {
+	writeEntry(entry)
+	m.storage.AddEntry(entry)
+	items := latestEntriesAsItems(m.storage)
+	m.list.SetItems(lo.Filter(items, func(item list.Item, index int) bool {
+		return item.File() == os.Args[1]
+	}))
+}
+
+func (m *model) viewEntry(entry storage.Entry) {
+	entries, ok := m.storage.Get(entry.Id())
+
+	if !ok {
+		panic(fmt.Sprintf("Couldn't find revisions for %s", entry.Id()))
+	}
+
+	m.mode = viewing
+
+	revisions := []storage.Entry{}
+	for _, no := range slices.Backward(entries) {
+		revisions = append(revisions, no)
+	}
+	m.viewer.SetRevisions(revisions)
 }
 
 func (m model) View() string {
@@ -130,6 +138,9 @@ func main() {
 	store := storage.New(os.Args[1:])
 	verify(store)
 	items := latestEntriesAsItems(store)
+	items = lo.Filter(items, func(item list.Item, index int) bool {
+		return item.File() == os.Args[1]
+	})
 
 	m := &model{
 		list:    list.New(),
@@ -137,9 +148,12 @@ func main() {
 		viewer:  viewer.New(store),
 		storage: store,
 	}
-	m.list.SetItems(lo.Filter(items, func(item list.Item, index int) bool {
-		return item.File() == os.Args[1]
-	}))
+
+	if len(items) == 1 {
+		m.viewEntry(items[0].Entry())
+	}
+
+	m.list.SetItems(items)
 
 	p := tea.NewProgram(m, tea.WithAltScreen())
 

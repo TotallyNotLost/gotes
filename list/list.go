@@ -20,11 +20,11 @@ type Item struct {
 	entry storage.Entry
 }
 
-func (i Item) Id() string          { return i.entry.Id() }
-func (i Item) File() string        { return i.entry.File() }
-func (i Item) Title() string       { return lo.FirstOrEmpty(strings.Split(i.entry.Text(), "\n")) }
-func (i Item) Description() string { return strings.Join(i.entry.Tags(), ",") }
-func (i Item) FilterValue() string { return i.Title() + " " + i.Description() }
+func (i Item) Entry() storage.Entry { return i.entry }
+func (i Item) File() string         { return i.entry.File() }
+func (i Item) Title() string        { return lo.FirstOrEmpty(strings.Split(i.entry.Text(), "\n")) }
+func (i Item) Description() string  { return strings.Join(i.entry.Tags(), ",") }
+func (i Item) FilterValue() string  { return i.Title() + " " + i.Description() }
 
 type Model struct {
 	list list.Model
