@@ -121,8 +121,8 @@ func (m *Model) SetRevisions(revisions []storage.Entry) {
 	m.tabs.SetTabs(tabs)
 	m.tabs.SetEntryId(m.getActiveRevision().Id())
 	m.tabs.AdjustHeight()
-	m.updateRelatedList()
 	m.mode = normal
+	m.updateRelatedList()
 }
 
 func (m Model) Init() tea.Cmd {
