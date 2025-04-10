@@ -36,6 +36,8 @@ var (
 
 func New() Model {
 	ta := textarea.New()
+	ta.MaxHeight = 0
+	ta.CharLimit = 0
 	ta.Prompt = ""
 	ta.Placeholder = "Note..."
 	ta.ShowLineNumbers = true
@@ -66,7 +68,7 @@ func (m *Model) SetEntry(entry storage.Entry) {
 }
 
 func (m *Model) SetHeight(height int) {
-	m.textarea.SetHeight(height - 5)
+	m.textarea.SetHeight(height - 4)
 }
 
 func (m *Model) SetWidth(width int) {
