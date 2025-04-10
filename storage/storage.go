@@ -65,17 +65,20 @@ func splitEntries(text string) []string {
 	return strings.Split(text, "\n---\n")
 }
 
-func (s *Storage) LoadFromFiles() {
+func (s *Storage) loadFromFiles() {
 	for _, file := range s.sourceFiles {
 		entries := loadEntries(file)
 
 		for _, n := range entries {
-			if _, ok := (*s.storage)[n.Id()]; !ok {
-				(*s.storage)[n.Id()] = []Entry{}
-			}
-			(*s.storage)[n.Id()] = append((*s.storage)[n.Id()], n)
+			s.AddEntry(n)
 		}
 	}
+}
+
+func (s *Storage) AddEntry(entry Entry) {
+	id := entry.Id()
+	list, _ := (*s.storage)[id]
+	(*s.storage)[id] = append(list, entry)
 }
 
 func New(sourceFiles []string) *Storage {
@@ -84,7 +87,7 @@ func New(sourceFiles []string) *Storage {
 		sourceFiles: sourceFiles,
 		storage:     &s,
 	}
-	store.LoadFromFiles()
+	store.loadFromFiles()
 	return store
 }
 

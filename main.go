@@ -58,7 +58,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 	case gotescmd.NewEntryMsg:
 		writeEntry(msg.GetEntry())
-		m.storage.LoadFromFiles()
+		m.storage.AddEntry(msg.GetEntry())
 		items := latestEntriesAsItems(m.storage)
 		m.list.SetItems(lo.Filter(items, func(item list.Item, index int) bool {
 			return item.File() == os.Args[1]
