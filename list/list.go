@@ -46,14 +46,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "enter":
 			i, ok := m.list.SelectedItem().(Item)
 			if ok {
-				return m, gotescmd.ViewEntry(i.entry.Id())
+				return m, gotescmd.ViewEntry(i.entry)
 			}
 		case "n":
-			return m, gotescmd.EditEntry("")
+			var entry storage.Entry
+			return m, gotescmd.EditEntry(entry)
 		case "e":
 			i, ok := m.list.SelectedItem().(Item)
 			if ok {
-				return m, gotescmd.EditEntry(i.entry.Id())
+				return m, gotescmd.EditEntry(i.entry)
 			}
 		}
 	}

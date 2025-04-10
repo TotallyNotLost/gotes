@@ -1,8 +1,6 @@
 package storage
 
 import (
-	"crypto/sha1"
-	"encoding/hex"
 	"github.com/charmbracelet/log"
 	"github.com/samber/lo"
 	"os"
@@ -31,42 +29,7 @@ func loadEntries(file string) []Entry {
 	notes := splitEntries(readFile(file))
 
 	for index, text := range notes {
-		metadata := GetMetadata(text)
-
-		id, ok := metadata["id"]
-		if !ok {
-			h := sha1.New()
-			h.Write([]byte(text))
-			id = hex.EncodeToString(h.Sum(nil))
-		}
-
-		var tags []string
-		if t, ok := metadata["tags"]; ok {
-			tags = strings.Split(t, ",")
-		}
-
-		relatedIdentifier := metadata["related"]
-		isNotEmpty := func(s string, index int) bool {
-			return s != ""
-		}
-		relatedIdentifiers := lo.Filter(strings.Split(relatedIdentifier, ","), isNotEmpty)
-		hasHashtagPrefix := func(identifier string, index int) bool {
-			return strings.HasPrefix(identifier, "#")
-		}
-		notHasHashtagPrefix := func(identifier string, index int) bool {
-			return !hasHashtagPrefix(identifier, index)
-		}
-		removeHashtagPrefix := func(identifier string, index int) string {
-			return strings.TrimLeft(identifier, "#")
-		}
-		relatedTags := lo.Map(lo.Filter(relatedIdentifiers, hasHashtagPrefix), removeHashtagPrefix)
-		createRegexp := func(identifier string, index int) *regexp.Regexp {
-			r, _ := regexp.Compile(identifier)
-			return r
-		}
-		relatedRegexps := lo.Map(lo.Filter(relatedIdentifiers, notHasHashtagPrefix), createRegexp)
-
-		entry := NewEntry(id, file, 0, 0, text, tags, relatedTags, relatedRegexps, index)
+		entry := NewEntry(file, text, 0, 0, index)
 		entries = append(entries, entry)
 	}
 

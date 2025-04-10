@@ -2,13 +2,12 @@ package editor
 
 import (
 	gotescmd "github.com/TotallyNotLost/gotes/cmd"
+	"github.com/TotallyNotLost/gotes/storage"
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/textarea"
-	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"strings"
 )
 
 const gap = "\n\n"
@@ -56,38 +55,23 @@ func New() Model {
 	ta.BlurredStyle.EndOfBuffer = endOfBufferStyle
 	ta.Focus()
 
-	ti := textinput.New()
-	ti.Placeholder = "Tags..."
-	ti.PromptStyle.BorderStyle(lipgloss.RoundedBorder())
-
 	return Model{
-		textarea:  ta,
-		tagsInput: ti,
-		state:     writingNote,
-		keyMap:    defaultKeyMap(),
-		help:      help.New(),
+		textarea: ta,
+		keyMap:   defaultKeyMap(),
+		help:     help.New(),
 	}
 }
 
 type Model struct {
-	id        string
-	textarea  textarea.Model
-	tagsInput textinput.Model
-	state     state
-	keyMap    keyMap
-	help      help.Model
+	entry    storage.Entry
+	textarea textarea.Model
+	keyMap   keyMap
+	help     help.Model
 }
 
-func (m *Model) SetId(id string) {
-	m.id = id
-}
-
-func (m *Model) SetText(text string) {
-	m.textarea.SetValue(text)
-}
-
-func (m *Model) SetTags(tags string) {
-	m.tagsInput.SetValue(tags)
+func (m *Model) SetEntry(entry storage.Entry) {
+	m.entry = entry
+	m.textarea.SetValue(entry.String())
 }
 
 func (m *Model) SetHeight(height int) {
@@ -108,42 +92,22 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 		switch {
 		case key.Matches(msg, m.keyMap.Back):
 			return m, gotescmd.Back
-		case key.Matches(msg, m.keyMap.Previous):
-			m.state = writingNote
-			m.tagsInput.Blur()
-			m.textarea.Focus()
-			m.tagsInput.PromptStyle = lipgloss.NewStyle()
-			m.tagsInput.TextStyle = lipgloss.NewStyle()
-		case key.Matches(msg, m.keyMap.Next):
-			m.state = writingTags
-			m.textarea.Blur()
-			m.tagsInput.Focus()
-			m.tagsInput.PromptStyle = focusedInputStyle
-			m.tagsInput.TextStyle = focusedInputStyle
-		case key.Matches(msg, m.keyMap.Submit) && m.state == writingTags:
-			id := m.id
+		case key.Matches(msg, m.keyMap.Submit):
 			text := m.textarea.Value()
-			tags := m.tagsInput.Value()
 
-			return m, gotescmd.NewEntry(id, text, strings.Split(tags, ","))
+			return m, gotescmd.NewEntry(m.entry.File(), text)
 		}
 	}
 
-	var (
-		tiCmd tea.Cmd
-		taCmd tea.Cmd
-	)
+	var cmd tea.Cmd
 
-	if m.state == writingNote {
-		m.textarea, taCmd = m.textarea.Update(msg)
-	}
-	m.tagsInput, tiCmd = m.tagsInput.Update(msg)
+	m.textarea, cmd = m.textarea.Update(msg)
 
-	return m, tea.Batch(tiCmd, taCmd)
+	return m, cmd
 }
 
 func (m Model) View() string {
-	return m.textarea.View() + gap + m.tagsInput.View() + gap + m.helpView()
+	return m.textarea.View() + gap + m.helpView()
 }
 
 func (m Model) ShortHelp() []key.Binding {
@@ -162,24 +126,13 @@ func (m Model) helpView() string {
 }
 
 type keyMap struct {
-	Back     key.Binding
-	Previous key.Binding
-	Next     key.Binding
-	Submit   key.Binding
+	Back   key.Binding
+	Submit key.Binding
 }
 
 func defaultKeyMap() keyMap {
 	return keyMap{
-		Back:     key.NewBinding(key.WithKeys("ctrl+c"), key.WithHelp("ctrl+c", "back")),
-		Previous: key.NewBinding(key.WithKeys("shift+tab"), key.WithHelp("shit+tab", "previous")),
-		Next:     key.NewBinding(key.WithKeys("tab"), key.WithHelp("tab", "next")),
-		Submit:   key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "submit")),
+		Back:   key.NewBinding(key.WithKeys("ctrl+c"), key.WithHelp("ctrl+c", "back")),
+		Submit: key.NewBinding(key.WithKeys("ctrl+s"), key.WithHelp("ctrl+s", "submit")),
 	}
 }
-
-type state int
-
-const (
-	writingNote state = 0
-	writingTags       = 1
-)

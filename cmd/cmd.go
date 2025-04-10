@@ -1,6 +1,9 @@
 package cmd
 
-import tea "github.com/charmbracelet/bubbletea"
+import (
+	"github.com/TotallyNotLost/gotes/storage"
+	tea "github.com/charmbracelet/bubbletea"
+)
 
 func Back() tea.Msg {
 	return BackMsg(1)
@@ -8,62 +11,50 @@ func Back() tea.Msg {
 
 type BackMsg int
 
-func NewEntry(id string, body string, tags []string) tea.Cmd {
+func NewEntry(file string, text string) tea.Cmd {
 	return func() tea.Msg {
 		return NewEntryMsg{
-			id:   id,
-			body: body,
-			tags: tags,
+			entry: storage.NewEntry(file, text, 0, 0, 0),
 		}
 	}
 }
 
 type NewEntryMsg struct {
-	id   string
-	body string
-	tags []string
+	entry storage.Entry
 }
 
-func (msg NewEntryMsg) GetId() string {
-	return msg.id
+func (msg NewEntryMsg) GetEntry() storage.Entry {
+	return msg.entry
 }
 
-func (msg NewEntryMsg) GetBody() string {
-	return msg.body
-}
-
-func (msg NewEntryMsg) GetTags() []string {
-	return msg.tags
-}
-
-func EditEntry(id string) tea.Cmd {
+func EditEntry(entry storage.Entry) tea.Cmd {
 	return func() tea.Msg {
-		return EditEntryMsg {
-			id: id,
+		return EditEntryMsg{
+			entry: entry,
 		}
 	}
 }
 
 type EditEntryMsg struct {
-	id string
+	entry storage.Entry
 }
 
-func (msg EditEntryMsg) GetId() string {
-	return msg.id
+func (msg EditEntryMsg) GetEntry() storage.Entry {
+	return msg.entry
 }
 
-func ViewEntry(id string) tea.Cmd {
+func ViewEntry(entry storage.Entry) tea.Cmd {
 	return func() tea.Msg {
-		return ViewEntryMsg {
-			id: id,
+		return ViewEntryMsg{
+			entry: entry,
 		}
 	}
 }
 
 type ViewEntryMsg struct {
-	id string
+	entry storage.Entry
 }
 
-func (msg ViewEntryMsg) GetId() string {
-	return msg.id
+func (msg ViewEntryMsg) GetEntry() storage.Entry {
+	return msg.entry
 }

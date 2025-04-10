@@ -1,8 +1,11 @@
 package storage
 
 import (
+	"crypto/sha1"
+	"encoding/hex"
 	"github.com/samber/lo"
 	"regexp"
+	"strings"
 )
 
 type Entry struct {
@@ -19,7 +22,46 @@ type Entry struct {
 	index int
 }
 
-func NewEntry(id string, file string, start int, end int, text string, tags []string, relatedTags []string, relatedRegexps []*regexp.Regexp, index int) Entry {
+// start(inclusive) and end(exclusive) are the
+// offsets of text within file.
+// index is the index of the text within the file.
+// E.g. The first entry in the file has index 0, second index 2, etc.
+func NewEntry(file string, text string, start int, end int, index int) Entry {
+	metadata := GetMetadata(text)
+
+	id, ok := metadata["id"]
+	if !ok {
+		h := sha1.New()
+		h.Write([]byte(text))
+		id = hex.EncodeToString(h.Sum(nil))
+	}
+
+	var tags []string
+	if t, ok := metadata["tags"]; ok {
+		tags = strings.Split(t, ",")
+	}
+
+	relatedIdentifier := metadata["related"]
+	isNotEmpty := func(s string, index int) bool {
+		return s != ""
+	}
+	relatedIdentifiers := lo.Filter(strings.Split(relatedIdentifier, ","), isNotEmpty)
+	hasHashtagPrefix := func(identifier string, index int) bool {
+		return strings.HasPrefix(identifier, "#")
+	}
+	notHasHashtagPrefix := func(identifier string, index int) bool {
+		return !hasHashtagPrefix(identifier, index)
+	}
+	removeHashtagPrefix := func(identifier string, index int) string {
+		return strings.TrimLeft(identifier, "#")
+	}
+	relatedTags := lo.Map(lo.Filter(relatedIdentifiers, hasHashtagPrefix), removeHashtagPrefix)
+	createRegexp := func(identifier string, index int) *regexp.Regexp {
+		r, _ := regexp.Compile(identifier)
+		return r
+	}
+	relatedRegexps := lo.Map(lo.Filter(relatedIdentifiers, notHasHashtagPrefix), createRegexp)
+
 	return Entry{
 		id:             id,
 		file:           file,
@@ -31,6 +73,10 @@ func NewEntry(id string, file string, start int, end int, text string, tags []st
 		relatedRegexps: relatedRegexps,
 		index:          index,
 	}
+}
+
+func (e Entry) String() string {
+	return e.text
 }
 
 func (e Entry) Id() string {

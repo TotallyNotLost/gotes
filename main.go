@@ -11,11 +11,9 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/log"
-	"github.com/google/uuid"
 	"github.com/samber/lo"
 	"os"
 	"slices"
-	"strings"
 )
 
 type mode int
@@ -59,7 +57,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.mode = browsing
 		return m, nil
 	case gotescmd.NewEntryMsg:
-		writeEntry(msg.GetId(), msg.GetBody(), msg.GetTags())
+		writeEntry(msg.GetEntry())
 		m.storage.LoadFromFiles()
 		items := latestEntriesAsItems(m.storage)
 		m.list.SetItems(lo.Filter(items, func(item list.Item, index int) bool {
@@ -68,33 +66,14 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.mode = browsing
 		return m, nil
 	case gotescmd.EditEntryMsg:
-		var entry storage.Entry
-		id := msg.GetId()
-
-		if id == "" {
-			id = uuid.New().String()
-		} else {
-			var ok bool
-			entry, ok = m.storage.GetLatest(id)
-			if !ok {
-				panic(fmt.Sprintf("Can't find entry %s", id))
-			}
-		}
-
-		text := strings.TrimSpace(markdown.RemoveMetadata(markdown.RemoveMetadata(entry.Text(), "id"), "tags"))
-		metadata := storage.GetMetadata(entry.Text())
-		tags, _ := metadata["tags"]
-
-		m.editor.SetId(id)
-		m.editor.SetText(strings.TrimSpace(text))
-		m.editor.SetTags(tags)
+		m.editor.SetEntry(msg.GetEntry())
 		m.mode = editing
 		return m, nil
 	case gotescmd.ViewEntryMsg:
-		entries, ok := m.storage.Get(msg.GetId())
+		entries, ok := m.storage.Get(msg.GetEntry().Id())
 
 		if !ok {
-			panic(fmt.Sprintf("1Couldn't find entry for %s", msg.GetId()))
+			panic(fmt.Sprintf("Couldn't find entry for %s", msg.GetEntry().Id()))
 		}
 
 		m.mode = viewing
@@ -137,8 +116,8 @@ func (m model) View() string {
 	return view
 }
 
-func writeEntry(id string, body string, tags []string) {
-	f, err := os.OpenFile(os.Args[1], os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
+func writeEntry(entry storage.Entry) {
+	f, err := os.OpenFile(entry.File(), os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
 	if err != nil {
 		panic(err)
 	}
@@ -146,19 +125,7 @@ func writeEntry(id string, body string, tags []string) {
 	defer f.Close()
 
 	f.WriteString("\n---\n")
-	f.WriteString(body)
-
-	tgs := strings.Join(tags, ",")
-
-	if (id + tgs) != "" {
-		f.WriteString("\n")
-	}
-	if id != "" {
-		f.WriteString("\n[_metadata_:id]:# \"" + id + "\"")
-	}
-	if tgs != "" {
-		f.WriteString("\n[_metadata_:tags]:# \"" + tgs + "\"")
-	}
+	f.WriteString(entry.String())
 }
 func main() {
 	store := storage.New(os.Args[1:])
