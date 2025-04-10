@@ -60,8 +60,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case gotescmd.NewEntryMsg:
 		writeEntry(msg.GetId(), msg.GetBody(), msg.GetTags())
 		m.storage.LoadFromFiles()
-		items := loadItems(m.storage)
-		m.list.SetItems(items)
+		items := latestEntriesAsItems(m.storage)
+		m.list.SetItems(lo.Filter(items, func(item list.Item, index int) bool {
+			return item.File() == os.Args[1]
+		}))
 		m.mode = browsing
 		return m, nil
 	case gotescmd.EditEntryMsg:
@@ -159,7 +161,7 @@ func writeEntry(id string, body string, tags []string) {
 }
 func main() {
 	store := storage.New(os.Args[1:])
-	items := loadItems(store)
+	items := latestEntriesAsItems(store)
 
 	m := &model{
 		list:    list.New(),
@@ -167,7 +169,9 @@ func main() {
 		viewer:  viewer.New(store),
 		storage: store,
 	}
-	m.list.SetItems(items)
+	m.list.SetItems(lo.Filter(items, func(item list.Item, index int) bool {
+		return item.File() == os.Args[1]
+	}))
 
 	p := tea.NewProgram(m, tea.WithAltScreen())
 
@@ -176,7 +180,7 @@ func main() {
 	}
 }
 
-func loadItems(s *storage.Storage) []list.Item {
+func latestEntriesAsItems(s *storage.Storage) []list.Item {
 	return lo.Map(s.GetLatestEntries(), func(entry storage.Entry, index int) list.Item {
 		return list.EntryToItem(entry)
 	})

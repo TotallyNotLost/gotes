@@ -5,9 +5,7 @@ import (
 	"github.com/TotallyNotLost/gotes/storage"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/samber/lo"
-	"os"
 	"regexp"
-	"strconv"
 	"strings"
 )
 
@@ -64,31 +62,24 @@ func (p Parser) expandIncludes(md string) string {
 // This will make it easier to parse/handle elsewhere.
 //
 // Normalized format:
-// [file-path]:[selector]
+// [selector]
 func (p Parser) normalizeIdentifier(incl string) string {
 	var (
-		file, selector string
+		selector string
 	)
 
 	selreg, _ := regexp.Compile("(^\\$.+$)|(^#.+$)|(^\\d+(-\\d+)?$)")
 
 	if strings.Contains(incl, ":") {
 		parts := strings.SplitN(incl, ":", 2)
-		file = parts[0]
 		selector = parts[1]
 	} else if selreg.MatchString(incl) {
-		file = ""
 		selector = incl
 	} else {
-		file = incl
 		selector = ""
 	}
 
-	return fmt.Sprintf("%s:%s", p.normalizeInclFile(file), p.normalizeInclSelector(selector))
-}
-
-func (p Parser) normalizeInclFile(file string) string {
-	return file
+	return p.normalizeInclSelector(selector)
 }
 
 // Normalizes selector so that it fits one of these formats:
@@ -114,22 +105,8 @@ func (p Parser) normalizeInclSelector(selector string) string {
 }
 
 func (p Parser) getTextForIdentifier(identifier string) string {
-	parts := strings.SplitN(identifier, ":", 2)
-	file := parts[0]
-
-	b, err := os.ReadFile(file)
-	if err != nil {
-		return fmt.Sprintf("{Error loading file \"%s\"}", identifier)
-	}
-
-	selector := parts[1]
-
-	if selector == "" {
-		return strings.TrimSpace(string(b))
-	}
-
-	if strings.HasPrefix(selector, "$") {
-		id := strings.TrimLeft(selector, "$")
+	if strings.HasPrefix(identifier, "$") {
+		id := strings.TrimLeft(identifier, "$")
 		entry, ok := p.storage.GetLatest(id)
 		if !ok {
 			panic(fmt.Sprintf("Couldn't find entry for %s", id))
@@ -137,10 +114,5 @@ func (p Parser) getTextForIdentifier(identifier string) string {
 		return entry.Text()
 	}
 
-	rng := strings.Split(selector, "-")
-	start, _ := strconv.Atoi(rng[0])
-	end, _ := strconv.Atoi(rng[1])
-
-	lines := strings.Split(string(b), "\n")
-	return strings.Join(lines[start:end], "\n")
+	return identifier
 }

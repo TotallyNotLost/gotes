@@ -11,18 +11,18 @@ import (
 )
 
 func EntryToItem(entry storage.Entry) Item {
-	return Item{id: entry.Id(), text: entry.Text(), tags: entry.Tags()}
+	return Item{entry: entry}
 }
 
 type Item struct {
-	id, text string
-	tags     []string
+	entry storage.Entry
 }
 
-func (i Item) Id() string          { return i.id }
-func (i Item) Title() string       { return lo.FirstOrEmpty(strings.Split(i.text, "\n")) }
-func (i Item) Description() string { return strings.Join(i.tags, ",") }
-func (i Item) FilterValue() string { return i.text + " " + i.Description() }
+func (i Item) Id() string          { return i.entry.Id() }
+func (i Item) File() string        { return i.entry.File() }
+func (i Item) Title() string       { return lo.FirstOrEmpty(strings.Split(i.entry.Text(), "\n")) }
+func (i Item) Description() string { return strings.Join(i.entry.Tags(), ",") }
+func (i Item) FilterValue() string { return i.Title() + " " + i.Description() }
 
 type Model struct {
 	list list.Model
@@ -46,14 +46,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "enter":
 			i, ok := m.list.SelectedItem().(Item)
 			if ok {
-				return m, gotescmd.ViewEntry(i.id)
+				return m, gotescmd.ViewEntry(i.entry.Id())
 			}
 		case "n":
 			return m, gotescmd.EditEntry("")
 		case "e":
 			i, ok := m.list.SelectedItem().(Item)
 			if ok {
-				return m, gotescmd.EditEntry(i.id)
+				return m, gotescmd.EditEntry(i.entry.Id())
 			}
 		}
 	}
