@@ -5,6 +5,7 @@ import (
 	"github.com/TotallyNotLost/gotes/formatter"
 	"github.com/TotallyNotLost/gotes/markdown"
 	"github.com/TotallyNotLost/gotes/tabs"
+	"github.com/TotallyNotLost/gotes/storage"
 	"github.com/TotallyNotLost/gotes/tags"
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
@@ -78,7 +79,7 @@ func New(file string) Model {
 
 type Model struct {
 	tabs                tabs.Model
-	revisions           []markdown.Entry
+	revisions           []storage.Entry
 	relatedList         list.Model
 	relatedListDelegate list.DefaultDelegate
 	lastActiveRevision  string
@@ -106,9 +107,9 @@ func (m *Model) SetWidth(width int) {
 	m.relatedList.SetWidth(relatedViewWidth)
 }
 
-func (m *Model) SetRevisions(revisions []markdown.Entry) {
+func (m *Model) SetRevisions(revisions []storage.Entry) {
 	m.revisions = revisions
-	tabs := lo.Map(m.revisions, func(revision markdown.Entry, i int) tabs.Tab {
+	tabs := lo.Map(m.revisions, func(revision storage.Entry, i int) tabs.Tab {
 		title := "Revision HEAD~" + strconv.Itoa(i)
 		if i == 0 {
 			title += " (latest)"
@@ -199,10 +200,10 @@ func (m *Model) updateRelatedList() {
 
 	relatedIdentifier := m.getActiveRevision().RelatedIdentifier()
 	entries := markdown.GetEntriesWithTags(os.Args[1], []string{strings.TrimLeft(relatedIdentifier, "#")})
-	entries = lo.Filter(entries, func(entry markdown.Entry, index int) bool {
+	entries = lo.Filter(entries, func(entry storage.Entry, index int) bool {
 		return entry.Id() != m.getActiveRevision().Id()
 	})
-	items := lo.Map(entries, func(entry markdown.Entry, index int) list.Item {
+	items := lo.Map(entries, func(entry storage.Entry, index int) list.Item {
 		return item{id: entry.Id(), text: entry.Text(), tags: entry.Tags()}
 	})
 
@@ -233,9 +234,9 @@ func (m Model) FullHelp() [][]key.Binding {
 	return [][]key.Binding{append(m.ShortHelp(), m.tabs.ShortHelp()...)}
 }
 
-func (m Model) getActiveRevision() markdown.Entry {
+func (m Model) getActiveRevision() storage.Entry {
 	if m.tabs.ActiveTab >= len(m.revisions) {
-		return markdown.Entry{}
+		return storage.Entry{}
 	}
 	return m.revisions[m.tabs.ActiveTab]
 }

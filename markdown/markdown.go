@@ -2,14 +2,15 @@ package markdown
 
 import (
 	"github.com/samber/lo"
+	"github.com/TotallyNotLost/gotes/storage"
 	"log"
 	"os"
 	"regexp"
 	"strings"
 )
 
-func LoadEntries(file string, filter func(Entry) bool) []Entry {
-	items := []Entry{}
+func LoadEntries(file string, filter func(storage.Entry) bool) []storage.Entry {
+	items := []storage.Entry{}
 
 	notes := SplitEntries(ReadFile(file))
 
@@ -24,7 +25,7 @@ func LoadEntries(file string, filter func(Entry) bool) []Entry {
 		id := metadata["id"]
 		relatedIdentifier := metadata["related"]
 
-		itm := NewEntry(id, file, 0, 0, text, tags, relatedIdentifier)
+		itm := storage.NewEntry(id, file, 0, 0, text, tags, relatedIdentifier)
 
 		if filter(itm) {
 			items = append(items, itm)
@@ -62,8 +63,8 @@ func GetEntry(content string, id string) string {
 }
 
 // Returns all entries that have at least one of the provided tags.
-func GetEntriesWithTags(content string, tags []string) []Entry {
-	return LoadEntries(content, func(entry Entry) bool {
+func GetEntriesWithTags(content string, tags []string) []storage.Entry {
+	return LoadEntries(content, func(entry storage.Entry) bool {
 		return lo.Some(entry.Tags(), tags)
 	})
 }
@@ -108,6 +109,6 @@ func ReadFile(file string) string {
 	return string(b)
 }
 
-func AllEntriesFilter(entry Entry) bool {
+func AllEntriesFilter(entry storage.Entry) bool {
 	return true
 }

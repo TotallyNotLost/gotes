@@ -2,7 +2,7 @@ package list
 
 import (
 	gotescmd "github.com/TotallyNotLost/gotes/cmd"
-	"github.com/TotallyNotLost/gotes/markdown"
+	"github.com/TotallyNotLost/gotes/storage"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/samber/lo"
@@ -10,7 +10,7 @@ import (
 	"strings"
 )
 
-func EntryToItem(entry markdown.Entry) Item {
+func EntryToItem(entry storage.Entry) Item {
 	return Item{id: entry.Id(), text: entry.Text(), tags: entry.Tags()}
 }
 

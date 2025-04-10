@@ -6,6 +6,7 @@ import (
 	"github.com/TotallyNotLost/gotes/editor"
 	"github.com/TotallyNotLost/gotes/list"
 	"github.com/TotallyNotLost/gotes/markdown"
+	"github.com/TotallyNotLost/gotes/storage"
 	"github.com/TotallyNotLost/gotes/viewer"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -34,8 +35,8 @@ type model struct {
 	list      list.Model
 	viewer    viewer.Model
 	editor    editor.Model
-	entries   []markdown.Entry
-	noteInfos map[string][]markdown.Entry
+	entries   []storage.Entry
+	noteInfos map[string][]storage.Entry
 }
 
 func (model model) Init() tea.Cmd {
@@ -65,14 +66,14 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.mode = browsing
 		return m, nil
 	case gotescmd.EditEntryMsg:
-		var entry markdown.Entry
+		var entry storage.Entry
 		id := msg.GetId()
 
 		if id == "" {
 			id = uuid.New().String()
 		} else {
 			var ok bool
-			entry, _, ok = lo.FindLastIndexOf(m.entries, func(entry markdown.Entry) bool {
+			entry, _, ok = lo.FindLastIndexOf(m.entries, func(entry storage.Entry) bool {
 				return entry.Id() == id
 			})
 			if !ok {
@@ -94,7 +95,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		m.mode = viewing
 
-		revisions := []markdown.Entry{}
+		revisions := []storage.Entry{}
 		for _, no := range slices.Backward(entries) {
 			revisions = append(revisions, no)
 		}
@@ -176,19 +177,19 @@ func main() {
 	}
 }
 
-func loadItems(noteInfos map[string][]markdown.Entry) []list.Item {
-	return lo.Map(lo.Values(noteInfos), func(entries []markdown.Entry, index int) list.Item {
+func loadItems(noteInfos map[string][]storage.Entry) []list.Item {
+	return lo.Map(lo.Values(noteInfos), func(entries []storage.Entry, index int) list.Item {
 		entry := lo.LastOrEmpty(entries)
 		return list.EntryToItem(entry)
 	})
 }
 
-func makeNoteInfos(entries []markdown.Entry) map[string][]markdown.Entry {
-	m := make(map[string][]markdown.Entry)
+func makeNoteInfos(entries []storage.Entry) map[string][]storage.Entry {
+	m := make(map[string][]storage.Entry)
 
 	for _, n := range entries {
 		if _, ok := m[n.Id()]; !ok {
-			m[n.Id()] = []markdown.Entry{}
+			m[n.Id()] = []storage.Entry{}
 		}
 		m[n.Id()] = append(m[n.Id()], n)
 	}
