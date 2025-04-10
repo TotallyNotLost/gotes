@@ -54,14 +54,18 @@ func (e Entry) Tags() []string {
 }
 
 func (e Entry) IsRelated(e2 Entry) bool {
-	some := lo.Some(e.relatedTags, e2.Tags())
+	return isRelated(e, e2) || isRelated(e2, e)
+}
+
+func isRelated(e1 Entry, e2 Entry) bool {
+	some := lo.Some(e1.relatedTags, e2.Tags())
 
 	if some {
 		return true
 	}
 
 	matches := func(r *regexp.Regexp, index int) bool {
-		return r.Match([]byte(e.Text()))
+		return r.Match([]byte(e1.Text()))
 	}
 	return len(lo.Filter(e2.relatedRegexps, matches)) > 0
 }

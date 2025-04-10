@@ -49,7 +49,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		width := msg.Width - mainStyle.GetWidth()
-		height := msg.Height - 2
+		height := msg.Height - lipgloss.Height(mainStyle.Render(""))
 		m.list.SetSize(width, height)
 		m.viewer.SetHeight(height)
 		m.viewer.SetWidth(width)

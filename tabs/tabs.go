@@ -78,7 +78,7 @@ func (m *Model) SetHeight(height int) {
 func (m *Model) AdjustHeight() {
 	verticalHeight := lipgloss.Height(m.footerView())
 	if len(m.tabs) != 1 {
-		verticalHeight -= lipgloss.Height(m.tabsView())
+		verticalHeight += lipgloss.Height(m.tabsView())
 	}
 	m.viewport.Height = m.height - verticalHeight
 }
