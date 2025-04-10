@@ -1,9 +1,9 @@
 package markdown
 
 import (
+	"github.com/samber/lo"
 	"log"
 	"os"
-	"github.com/samber/lo"
 	"regexp"
 	"strings"
 )
@@ -24,7 +24,7 @@ func LoadEntries(file string, filter func(Entry) bool) []Entry {
 		id := metadata["id"]
 		relatedIdentifier := metadata["related"]
 
-		itm := NewEntry(id, text, tags, relatedIdentifier)
+		itm := NewEntry(id, file, 0, 0, text, tags, relatedIdentifier)
 
 		if filter(itm) {
 			items = append(items, itm)

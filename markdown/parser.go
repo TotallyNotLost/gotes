@@ -2,8 +2,8 @@ package markdown
 
 import (
 	"fmt"
-	"github.com/samber/lo"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/samber/lo"
 	"os"
 	"regexp"
 	"strconv"

@@ -2,32 +2,50 @@ package markdown
 
 type Entry struct {
 	id                string
+	file              string
+	start             int
+	end               int
 	text              string
 	tags              []string
 	relatedIdentifier string
 }
 
-func NewEntry(id string, text string, tags []string, relatedIdentifier string) Entry {
+func NewEntry(id string, file string, start int, end int, text string, tags []string, relatedIdentifier string) Entry {
 	return Entry{
 		id:                id,
+		file:              file,
+		start:             start,
+		end:               end,
 		text:              text,
 		tags:              tags,
 		relatedIdentifier: relatedIdentifier,
 	}
 }
 
-func (n Entry) Id() string {
-	return n.id
+func (e Entry) Id() string {
+	return e.id
 }
 
-func (n Entry) Text() string {
-	return n.text
+func (e Entry) File() string {
+	return e.file
 }
 
-func (n Entry) Tags() []string {
-	return n.tags
+func (e Entry) Start() int {
+	return e.start
 }
 
-func (n Entry) RelatedIdentifier() string {
-	return n.relatedIdentifier
+func (e Entry) End() int {
+	return e.end
+}
+
+func (e Entry) Text() string {
+	return e.text
+}
+
+func (e Entry) Tags() []string {
+	return e.tags
+}
+
+func (e Entry) RelatedIdentifier() string {
+	return e.relatedIdentifier
 }

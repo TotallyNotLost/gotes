@@ -1,20 +1,19 @@
 package main
 
 import (
-	"github.com/samber/lo"
-	"slices"
 	"fmt"
-	"github.com/google/uuid"
-	"github.com/TotallyNotLost/gotes/editor"
 	gotescmd "github.com/TotallyNotLost/gotes/cmd"
+	"github.com/TotallyNotLost/gotes/editor"
 	"github.com/TotallyNotLost/gotes/list"
-	"github.com/TotallyNotLost/gotes/viewer"
-	"strings"
 	"github.com/TotallyNotLost/gotes/markdown"
+	"github.com/TotallyNotLost/gotes/viewer"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	blist "github.com/charmbracelet/bubbles/list"
+	"github.com/google/uuid"
+	"github.com/samber/lo"
 	"os"
+	"slices"
+	"strings"
 )
 
 type mode int
@@ -31,12 +30,12 @@ var mainStyle = lipgloss.NewStyle().
 	BorderForeground(lipgloss.Color("62"))
 
 type model struct {
-	mode   mode
-	list   list.Model
-	viewer viewer.Model
-	editor editor.Model
-	notes     []markdown.Entry
-	noteInfos map[string][]noteInfo
+	mode      mode
+	list      list.Model
+	viewer    viewer.Model
+	editor    editor.Model
+	entries   []markdown.Entry
+	noteInfos map[string][]markdown.Entry
 }
 
 func (model model) Init() tea.Cmd {
@@ -60,9 +59,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 	case gotescmd.NewEntryMsg:
 		writeEntry(msg.GetId(), msg.GetBody(), msg.GetTags())
-		m.notes = markdown.LoadEntries(os.Args[1], markdown.AllEntriesFilter)
-		m.list.SetItems(loadItems(m.notes))
-		m.noteInfos = makeNoteInfos(m.notes)
+		m.entries = markdown.LoadEntries(os.Args[1], markdown.AllEntriesFilter)
+		m.noteInfos = makeNoteInfos(m.entries)
+		m.list.SetItems(loadItems(m.noteInfos))
 		m.mode = browsing
 		return m, nil
 	case gotescmd.EditEntryMsg:
@@ -73,7 +72,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			id = uuid.New().String()
 		} else {
 			var ok bool
-			entry, _, ok = lo.FindLastIndexOf(m.notes, func(entry markdown.Entry) bool {
+			entry, _, ok = lo.FindLastIndexOf(m.entries, func(entry markdown.Entry) bool {
 				return entry.Id() == id
 			})
 			if !ok {
@@ -91,16 +90,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.mode = editing
 		return m, nil
 	case gotescmd.ViewEntryMsg:
-		noteInfos := m.noteInfos[msg.GetId()]
-		notes := []markdown.Entry{}
-		for _, noteInfo := range noteInfos {
-			notes = append(notes, m.notes[noteInfo.index])
-		}
+		entries := m.noteInfos[msg.GetId()]
 
 		m.mode = viewing
 
 		revisions := []markdown.Entry{}
-		for _, no := range slices.Backward(notes) {
+		for _, no := range slices.Backward(entries) {
 			revisions = append(revisions, no)
 		}
 		m.viewer.SetRevisions(revisions)
@@ -163,54 +158,39 @@ func writeEntry(id string, body string, tags []string) {
 func main() {
 	entries := markdown.LoadEntries(os.Args[1], markdown.AllEntriesFilter)
 	noteInfos := makeNoteInfos(entries)
-	items := loadItems(entries)
-	p := tea.NewProgram(&model{
-		list: list.New(lo.Map(items, func(item list.Item, index int) blist.Item {
-			return item
-		})),
-		editor: editor.New(),
-		viewer: viewer.New(os.Args[1]),
-		notes: entries,
+	items := loadItems(noteInfos)
+
+	m := &model{
+		list:      list.New(),
+		editor:    editor.New(),
+		viewer:    viewer.New(os.Args[1]),
+		entries:   entries,
 		noteInfos: noteInfos,
-	}, tea.WithAltScreen())
+	}
+	m.list.SetItems(items)
+
+	p := tea.NewProgram(m, tea.WithAltScreen())
 
 	if _, err := p.Run(); err != nil {
 		panic(err)
 	}
 }
 
-func loadItems(entries []markdown.Entry) []list.Item {
-	items := []list.Item{}
-
-	noteInfos := makeNoteInfos(entries)
-
-	for i := range slices.Backward(entries) {
-		entry := entries[i]
-
-		isLatestRevision := i == noteInfos[entry.Id()][len(noteInfos[entry.Id()])-1].index
-		if isLatestRevision && !lo.Contains(entry.Tags(), "Done") {
-			itm := list.EntryToItem(entry)
-			items = append(items, itm)
-		}
-	}
-
-	return items
+func loadItems(noteInfos map[string][]markdown.Entry) []list.Item {
+	return lo.Map(lo.Values(noteInfos), func(entries []markdown.Entry, index int) list.Item {
+		entry := lo.LastOrEmpty(entries)
+		return list.EntryToItem(entry)
+	})
 }
 
+func makeNoteInfos(entries []markdown.Entry) map[string][]markdown.Entry {
+	m := make(map[string][]markdown.Entry)
 
-type noteInfo struct {
-	index int
-}
-
-func makeNoteInfos(notes []markdown.Entry) map[string][]noteInfo {
-	m := make(map[string][]noteInfo)
-
-	for index, n := range notes {
+	for _, n := range entries {
 		if _, ok := m[n.Id()]; !ok {
-			m[n.Id()] = []noteInfo{}
+			m[n.Id()] = []markdown.Entry{}
 		}
-
-		m[n.Id()] = append(m[n.Id()], noteInfo{index: index})
+		m[n.Id()] = append(m[n.Id()], n)
 	}
 
 	return m

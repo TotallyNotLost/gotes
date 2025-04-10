@@ -24,7 +24,7 @@ func (i Item) Description() string { return strings.Join(i.tags, ",") }
 func (i Item) FilterValue() string { return i.text + " " + i.Description() }
 
 type Model struct {
-	list      list.Model
+	list list.Model
 }
 
 func (model Model) Init() tea.Cmd {
@@ -74,14 +74,14 @@ func (m *Model) SetItems(items []Item) {
 	}))
 }
 
-func New(items []list.Item) Model {
+func New() Model {
 	return Model{
-		list:      newList(items),
+		list: newList(),
 	}
 }
 
-func newList(items []list.Item) list.Model {
-	l := list.New(items, list.NewDefaultDelegate(), 0, 0)
+func newList() list.Model {
+	l := list.New([]list.Item{}, list.NewDefaultDelegate(), 0, 0)
 	l.Title = os.Args[1]
 
 	return l
