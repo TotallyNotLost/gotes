@@ -22,7 +22,7 @@ func (p Parser) Expand(md string) string {
 }
 
 func (p Parser) expandLinkShortSyntax(md string) string {
-	r, _ := regexp.Compile("\\{([-0-9a-zA-Z]+)\\}")
+	r, _ := regexp.Compile("\\{\\$([-0-9a-zA-Z]+)\\}")
 
 	return r.ReplaceAllStringFunc(md, func(metadata string) string {
 		id := r.FindStringSubmatch(metadata)[1]
@@ -64,22 +64,7 @@ func (p Parser) expandIncludes(md string) string {
 // Normalized format:
 // [selector]
 func (p Parser) normalizeIdentifier(incl string) string {
-	var (
-		selector string
-	)
-
-	selreg, _ := regexp.Compile("(^\\$.+$)|(^#.+$)|(^\\d+(-\\d+)?$)")
-
-	if strings.Contains(incl, ":") {
-		parts := strings.SplitN(incl, ":", 2)
-		selector = parts[1]
-	} else if selreg.MatchString(incl) {
-		selector = incl
-	} else {
-		selector = ""
-	}
-
-	return p.normalizeInclSelector(selector)
+	return p.normalizeInclSelector(incl)
 }
 
 // Normalizes selector so that it fits one of these formats:

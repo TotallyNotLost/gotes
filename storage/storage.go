@@ -1,6 +1,8 @@
 package storage
 
 import (
+	"crypto/sha1"
+	"encoding/hex"
 	"github.com/samber/lo"
 	"log"
 	"os"
@@ -23,26 +25,31 @@ func readFile(file string) string {
 }
 
 func loadEntries(file string) []Entry {
-	items := []Entry{}
+	entries := []Entry{}
 
 	notes := splitEntries(readFile(file))
 
 	for _, text := range notes {
 		metadata := GetMetadata(text)
 
+		id, ok := metadata["id"]
+		if !ok {
+			h := sha1.New()
+			h.Write([]byte(text))
+			id = hex.EncodeToString(h.Sum(nil))
+		}
+
 		var tags []string
 		if t, ok := metadata["tags"]; ok {
 			tags = strings.Split(t, ",")
 		}
-
-		id := metadata["id"]
 		relatedIdentifier := metadata["related"]
 
-		itm := NewEntry(id, file, 0, 0, text, tags, relatedIdentifier)
-		items = append(items, itm)
+		entry := NewEntry(id, file, 0, 0, text, tags, relatedIdentifier)
+		entries = append(entries, entry)
 	}
 
-	return items
+	return entries
 }
 
 func GetMetadata(text string) map[string]string {
@@ -71,13 +78,7 @@ func isMetadata(text string) bool {
 }
 
 func splitEntries(text string) []string {
-	notes := strings.Split(text, "\n---\n")
-
-	for index, note := range notes {
-		notes[index] = strings.TrimSpace(note)
-	}
-
-	return notes
+	return strings.Split(text, "\n---\n")
 }
 
 func (s *Storage) LoadFromFiles() {
