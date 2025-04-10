@@ -15,6 +15,7 @@ type Entry struct {
 	end            int
 	text           string
 	tags           []string
+	relatedIds     []string
 	relatedTags    []string
 	relatedRegexps []*regexp.Regexp
 	// Index of the entry within the file
@@ -46,21 +47,28 @@ func NewEntry(file string, text string, start int, end int, index int) Entry {
 		return s != ""
 	}
 	relatedIdentifiers := lo.Filter(strings.Split(relatedIdentifier, ","), isNotEmpty)
-	hasHashtagPrefix := func(identifier string, index int) bool {
-		return strings.HasPrefix(identifier, "#")
+	hasPrefix := func(prefix string) func(string, int) bool {
+		return func(identifier string, index int) bool {
+			return strings.HasPrefix(identifier, prefix)
+		}
 	}
-	notHasHashtagPrefix := func(identifier string, index int) bool {
-		return !hasHashtagPrefix(identifier, index)
+	hasHashtagPrefix := hasPrefix("#")
+	hasDollarPrefix := hasPrefix("$")
+	notHasPrefix := func(identifier string, index int) bool {
+		return !hasHashtagPrefix(identifier, index) && !hasDollarPrefix(identifier, index)
 	}
-	removeHashtagPrefix := func(identifier string, index int) string {
-		return strings.TrimLeft(identifier, "#")
+	removePrefix := func(prefix string) func(string, int) string {
+		return func(identifier string, index int) string {
+			return strings.TrimLeft(identifier, prefix)
+		}
 	}
-	relatedTags := lo.Map(lo.Filter(relatedIdentifiers, hasHashtagPrefix), removeHashtagPrefix)
+	relatedIds := lo.Map(lo.Filter(relatedIdentifiers, hasDollarPrefix), removePrefix("$"))
+	relatedTags := lo.Map(lo.Filter(relatedIdentifiers, hasHashtagPrefix), removePrefix("#"))
 	createRegexp := func(identifier string, index int) *regexp.Regexp {
 		r, _ := regexp.Compile(identifier)
 		return r
 	}
-	relatedRegexps := lo.Map(lo.Filter(relatedIdentifiers, notHasHashtagPrefix), createRegexp)
+	relatedRegexps := lo.Map(lo.Filter(relatedIdentifiers, notHasPrefix), createRegexp)
 
 	return Entry{
 		id:             id,
@@ -69,6 +77,7 @@ func NewEntry(file string, text string, start int, end int, index int) Entry {
 		end:            end,
 		text:           text,
 		tags:           tags,
+		relatedIds:     relatedIds,
 		relatedTags:    relatedTags,
 		relatedRegexps: relatedRegexps,
 		index:          index,
@@ -101,6 +110,10 @@ func (e Entry) Text() string {
 
 func (e Entry) Tags() []string {
 	return e.tags
+}
+
+func (e Entry) RelatedIds() []string {
+	return e.relatedIds
 }
 
 func (e Entry) IsRelated(e2 Entry) bool {

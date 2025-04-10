@@ -153,6 +153,13 @@ func verify(s *storage.Storage) {
 	for _, entry := range s.GetLatestEntries() {
 		_, u := markdown.NewParser(s).Expand(entry.Text())
 		unresolved = append(unresolved, u...)
+
+		for _, id := range entry.RelatedIds() {
+			_, ok := s.GetLatest(id)
+			if !ok {
+				unresolved = append(unresolved, id)
+			}
+		}
 	}
 
 	for _, identifier := range unresolved {
