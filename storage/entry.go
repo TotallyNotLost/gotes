@@ -121,9 +121,13 @@ func (e Entry) IsRelated(e2 Entry) bool {
 }
 
 func isRelated(e1 Entry, e2 Entry) bool {
-	some := lo.Some(e1.relatedTags, e2.Tags())
+	check := lo.Contains(e2.RelatedIds(), e1.Id())
+	if check {
+		return true
+	}
 
-	if some {
+	check = lo.Some(e1.relatedTags, e2.Tags())
+	if check {
 		return true
 	}
 
