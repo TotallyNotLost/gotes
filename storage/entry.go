@@ -2,6 +2,7 @@ package storage
 
 import (
 	"crypto/sha1"
+	"fmt"
 	"encoding/hex"
 	"github.com/samber/lo"
 	"regexp"
@@ -35,6 +36,7 @@ func NewEntry(file string, text string, start int, end int, index int) Entry {
 		h := sha1.New()
 		h.Write([]byte(text))
 		id = hex.EncodeToString(h.Sum(nil))
+		text += fmt.Sprintf("\n[_metadata_:id]:# \"%s\"", id)
 	}
 
 	var tags []string
