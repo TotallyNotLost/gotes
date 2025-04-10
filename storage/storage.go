@@ -2,18 +2,18 @@ package storage
 
 import (
 	"github.com/samber/lo"
+	"log"
+	"os"
 	"regexp"
 	"strings"
-	"os"
-	"log"
 )
 
 type Storage struct {
 	sourceFiles []string
-	storage *map[string][]Entry
+	storage     *map[string][]Entry
 }
 
-func ReadFile(file string) string {
+func readFile(file string) string {
 	b, err := os.ReadFile(file)
 	if err != nil {
 		log.Fatal(err)
@@ -22,10 +22,10 @@ func ReadFile(file string) string {
 	return string(b)
 }
 
-func LoadEntries(file string) []Entry {
+func loadEntries(file string) []Entry {
 	items := []Entry{}
 
-	notes := SplitEntries(ReadFile(file))
+	notes := splitEntries(readFile(file))
 
 	for _, text := range notes {
 		metadata := GetMetadata(text)
@@ -70,7 +70,7 @@ func isMetadata(text string) bool {
 	return r.MatchString(text)
 }
 
-func SplitEntries(text string) []string {
+func splitEntries(text string) []string {
 	notes := strings.Split(text, "\n---\n")
 
 	for index, note := range notes {
@@ -82,7 +82,7 @@ func SplitEntries(text string) []string {
 
 func (s *Storage) LoadFromFiles() {
 	for _, file := range s.sourceFiles {
-		entries := LoadEntries(file)
+		entries := loadEntries(file)
 
 		for _, n := range entries {
 			if _, ok := (*s.storage)[n.Id()]; !ok {
@@ -95,9 +95,9 @@ func (s *Storage) LoadFromFiles() {
 
 func New(sourceFiles []string) *Storage {
 	var s = make(map[string][]Entry)
-	store := &Storage{ 
+	store := &Storage{
 		sourceFiles: sourceFiles,
-		storage: &s,
+		storage:     &s,
 	}
 	store.LoadFromFiles()
 	return store
@@ -129,7 +129,6 @@ func (s *Storage) FindEntriesWithTags(tags []string) []Entry {
 		return lo.Some(entry.Tags(), tags)
 	})
 }
-
 
 func (s *Storage) GetRelatedTo(entry Entry) []Entry {
 	relatedIdentifier := entry.RelatedIdentifier()

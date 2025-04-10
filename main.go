@@ -79,7 +79,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		text := strings.TrimSpace(markdown.RemoveMetadata(markdown.RemoveMetadata(entry.Text(), "id"), "tags"))
-		metadata := markdown.GetMetadata(entry.Text())
+		metadata := storage.GetMetadata(entry.Text())
 		tags, _ := metadata["tags"]
 
 		m.editor.SetId(id)
@@ -181,4 +181,3 @@ func loadItems(s *storage.Storage) []list.Item {
 		return list.EntryToItem(entry)
 	})
 }
-
