@@ -19,9 +19,6 @@ var (
 			Background(lipgloss.Color("57")).
 			Foreground(lipgloss.Color("230"))
 
-	placeholderStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("238"))
-
 	endOfBufferStyle = lipgloss.NewStyle().
 				Foreground(lipgloss.Color("235"))
 
@@ -34,9 +31,6 @@ var (
 
 	focusedInputStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("205"))
 
-	blurredBorderStyle = lipgloss.NewStyle().
-				Border(lipgloss.HiddenBorder())
-
 	helpStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("241")).PaddingLeft(2).Render
 )
 
@@ -47,12 +41,9 @@ func New() Model {
 	ta.ShowLineNumbers = true
 	ta.Cursor.Style = cursorStyle
 	ta.FocusedStyle.Placeholder = focusedPlaceholderStyle
-	ta.BlurredStyle.Placeholder = placeholderStyle
 	ta.FocusedStyle.CursorLine = cursorLineStyle
 	ta.FocusedStyle.Base = focusedBorderStyle
-	ta.BlurredStyle.Base = blurredBorderStyle
 	ta.FocusedStyle.EndOfBuffer = endOfBufferStyle
-	ta.BlurredStyle.EndOfBuffer = endOfBufferStyle
 	ta.Focus()
 
 	return Model{

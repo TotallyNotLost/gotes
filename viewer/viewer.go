@@ -17,10 +17,11 @@ import (
 )
 
 var (
-	viewerStyle        = lipgloss.NewStyle().Padding(0, 2)
-	helpStyle          = lipgloss.NewStyle().Foreground(lipgloss.Color("241")).PaddingTop(1).Render
-	minWidthForRelated = 120
-	relatedViewWidth   = 50
+	viewerStyle             = lipgloss.NewStyle().Padding(0, 2)
+	helpStyle               = lipgloss.NewStyle().Foreground(lipgloss.Color("241")).PaddingTop(1).Render
+	minWidthForRelated      = 100
+	relatedViewWidthPercent = 0.4
+	relatedViewMaxWidth     = 40
 )
 
 type mode struct {
@@ -98,6 +99,7 @@ func (m *Model) SetHeight(height int) {
 
 func (m *Model) SetWidth(width int) {
 	m.width = width
+	relatedViewWidth := min(relatedViewMaxWidth, int(float64(width)*relatedViewWidthPercent))
 	if width > minWidthForRelated {
 		width -= relatedViewWidth
 	}
