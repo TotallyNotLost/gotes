@@ -1,24 +1,24 @@
 package storage
 
 type Entry struct {
-	id                string
-	file              string
-	start             int
-	end               int
-	text              string
-	tags              []string
-	relatedIdentifier string
+	id          string
+	file        string
+	start       int
+	end         int
+	text        string
+	tags        []string
+	relatedTags []string
 }
 
-func NewEntry(id string, file string, start int, end int, text string, tags []string, relatedIdentifier string) Entry {
+func NewEntry(id string, file string, start int, end int, text string, tags []string, relatedTags []string) Entry {
 	return Entry{
-		id:                id,
-		file:              file,
-		start:             start,
-		end:               end,
-		text:              text,
-		tags:              tags,
-		relatedIdentifier: relatedIdentifier,
+		id:          id,
+		file:        file,
+		start:       start,
+		end:         end,
+		text:        text,
+		tags:        tags,
+		relatedTags: relatedTags,
 	}
 }
 
@@ -46,6 +46,6 @@ func (e Entry) Tags() []string {
 	return e.tags
 }
 
-func (e Entry) RelatedIdentifier() string {
-	return e.relatedIdentifier
+func (e Entry) RelatedTags() []string {
+	return e.relatedTags
 }

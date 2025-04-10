@@ -44,8 +44,11 @@ func loadEntries(file string) []Entry {
 			tags = strings.Split(t, ",")
 		}
 		relatedIdentifier := metadata["related"]
+		relatedTags := lo.Map(strings.Split(relatedIdentifier, ","), func(identifier string, index int) string {
+			return strings.TrimLeft(identifier, "#")
+		})
 
-		entry := NewEntry(id, file, 0, 0, text, tags, relatedIdentifier)
+		entry := NewEntry(id, file, 0, 0, text, tags, relatedTags)
 		entries = append(entries, entry)
 	}
 
@@ -132,9 +135,8 @@ func (s *Storage) FindEntriesWithTags(tags []string) []Entry {
 }
 
 func (s *Storage) GetRelatedTo(entry Entry) []Entry {
-	relatedIdentifier := entry.RelatedIdentifier()
+	entries := s.FindEntriesWithTags(entry.RelatedTags())
 
-	entries := s.FindEntriesWithTags([]string{strings.TrimLeft(relatedIdentifier, "#")})
 	return lo.Filter(entries, func(e Entry, index int) bool {
 		return e.Id() != entry.Id()
 	})
