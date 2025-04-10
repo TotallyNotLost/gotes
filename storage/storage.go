@@ -7,6 +7,7 @@ import (
 	"github.com/samber/lo"
 	"os"
 	"regexp"
+	"sort"
 	"strings"
 )
 
@@ -29,7 +30,7 @@ func loadEntries(file string) []Entry {
 
 	notes := splitEntries(readFile(file))
 
-	for _, text := range notes {
+	for index, text := range notes {
 		metadata := GetMetadata(text)
 
 		id, ok := metadata["id"]
@@ -65,7 +66,7 @@ func loadEntries(file string) []Entry {
 		}
 		relatedRegexps := lo.Map(lo.Filter(relatedIdentifiers, notHasHashtagPrefix), createRegexp)
 
-		entry := NewEntry(id, file, 0, 0, text, tags, relatedTags, relatedRegexps)
+		entry := NewEntry(id, file, 0, 0, text, tags, relatedTags, relatedRegexps, index)
 		entries = append(entries, entry)
 	}
 
@@ -139,10 +140,20 @@ func (s *Storage) GetLatest(id string) (Entry, bool) {
 	return lo.Last(entries)
 }
 
+type ByIndex []Entry
+
+func (i ByIndex) Len() int           { return len(i) }
+func (a ByIndex) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a ByIndex) Less(i, j int) bool { return a[i].index < a[j].index }
+
 func (s *Storage) GetLatestEntries() []Entry {
-	return lo.Map(lo.Values(*s.storage), func(entries []Entry, index int) Entry {
-		return lo.LastOrEmpty(entries)
+	entries := lo.Map(lo.Values(*s.storage), func(es []Entry, index int) Entry {
+		return lo.LastOrEmpty(es)
 	})
+
+	sort.Sort(sort.Reverse(ByIndex(entries)))
+
+	return entries
 }
 
 func (s *Storage) FindEntriesRelatedTo(e Entry) []Entry {

@@ -14,9 +14,12 @@ type Entry struct {
 	tags           []string
 	relatedTags    []string
 	relatedRegexps []*regexp.Regexp
+	// Index of the entry within the file
+	// Used to order the entries roughly by age
+	index int
 }
 
-func NewEntry(id string, file string, start int, end int, text string, tags []string, relatedTags []string, relatedRegexps []*regexp.Regexp) Entry {
+func NewEntry(id string, file string, start int, end int, text string, tags []string, relatedTags []string, relatedRegexps []*regexp.Regexp, index int) Entry {
 	return Entry{
 		id:             id,
 		file:           file,
@@ -26,6 +29,7 @@ func NewEntry(id string, file string, start int, end int, text string, tags []st
 		tags:           tags,
 		relatedTags:    relatedTags,
 		relatedRegexps: relatedRegexps,
+		index:          index,
 	}
 }
 
