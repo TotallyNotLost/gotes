@@ -2,6 +2,7 @@ package markdown
 
 import (
 	"fmt"
+	"github.com/TotallyNotLost/gotes/storage"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/samber/lo"
 	"os"
@@ -10,15 +11,12 @@ import (
 	"strings"
 )
 
-func NewParser(file string) Parser {
-	return Parser{file: file}
+func NewParser(storage *storage.Storage) Parser {
+	return Parser{storage: storage}
 }
 
 type Parser struct {
-	// The source file that the markdown comes from.
-	// This is necessary in case the markdown has metadata that
-	// references/includes other notes or lines in the file.
-	file string
+	storage *storage.Storage
 }
 
 func (p Parser) Expand(md string) string {
@@ -39,7 +37,11 @@ func (p Parser) expandLink(md string) string {
 	r, _ := regexp.Compile("\\[_metadata_:link\\]:# \"([^\"]*)\"")
 	return r.ReplaceAllStringFunc(md, func(metadata string) string {
 		identifier := p.normalizeIdentifier(r.FindStringSubmatch(metadata)[1])
-		text := p.getTextForIdentifier(identifier)
+		entry, ok := p.storage.GetLatest(identifier)
+		if !ok {
+			panic(fmt.Sprintf("Couldn't find entry with id %s", identifier))
+		}
+		text := entry.Text()
 		title := lo.FirstOrEmpty(strings.Split(text, "\n"))
 
 		return fmt.Sprintf("[%s](%s)", title, identifier)
@@ -75,7 +77,7 @@ func (p Parser) normalizeIdentifier(incl string) string {
 		file = parts[0]
 		selector = parts[1]
 	} else if selreg.MatchString(incl) {
-		file = p.file
+		file = ""
 		selector = incl
 	} else {
 		file = incl
@@ -86,11 +88,7 @@ func (p Parser) normalizeIdentifier(incl string) string {
 }
 
 func (p Parser) normalizeInclFile(file string) string {
-	if file != "" {
-		return file
-	}
-
-	return p.file
+	return file
 }
 
 // Normalizes selector so that it fits one of these formats:
@@ -132,7 +130,11 @@ func (p Parser) getTextForIdentifier(identifier string) string {
 
 	if strings.HasPrefix(selector, "$") {
 		id := strings.TrimLeft(selector, "$")
-		return GetEntry(string(b), id)
+		entry, ok := p.storage.GetLatest(id)
+		if !ok {
+			panic(fmt.Sprintf("Couldn't find entry for %s", id))
+		}
+		return entry.Text()
 	}
 
 	rng := strings.Split(selector, "-")

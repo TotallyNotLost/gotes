@@ -1,19 +1,20 @@
 package formatter
 
 import (
-	"github.com/charmbracelet/glamour"
 	"github.com/TotallyNotLost/gotes/markdown"
+	"github.com/TotallyNotLost/gotes/storage"
+	"github.com/charmbracelet/glamour"
 )
 
-func NewMarkdownFormatter(file string) MarkdownFormatter {
+func NewMarkdownFormatter(storage *storage.Storage) MarkdownFormatter {
 	return MarkdownFormatter{
-		parser: markdown.NewParser(file),
+		parser: markdown.NewParser(storage),
 	}
 }
 
 type MarkdownFormatter struct {
 	parser markdown.Parser
-	width int
+	width  int
 }
 
 func (mf *MarkdownFormatter) SetWidth(width int) {
@@ -30,4 +31,3 @@ func (mf MarkdownFormatter) Format(s string) string {
 	md, _ := r.Render(mf.parser.Expand(s))
 	return md
 }
-

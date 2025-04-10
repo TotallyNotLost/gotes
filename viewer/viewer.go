@@ -3,9 +3,9 @@ package viewer
 import (
 	"github.com/TotallyNotLost/gotes/cmd"
 	"github.com/TotallyNotLost/gotes/formatter"
-	"github.com/TotallyNotLost/gotes/markdown"
-	"github.com/TotallyNotLost/gotes/tabs"
+	glist "github.com/TotallyNotLost/gotes/list"
 	"github.com/TotallyNotLost/gotes/storage"
+	"github.com/TotallyNotLost/gotes/tabs"
 	"github.com/TotallyNotLost/gotes/tags"
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
@@ -13,9 +13,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/samber/lo"
-	"os"
 	"strconv"
-	"strings"
 )
 
 var (
@@ -50,12 +48,12 @@ var normal = mode{
 var related = mode{
 	id: 1,
 	keyMap: keyMap{
-		View: key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "view")),
+		View:       key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "view")),
 		NormalMode: key.NewBinding(key.WithKeys("esc"), key.WithHelp("esc", "normal")),
 	},
 }
 
-func New(file string) Model {
+func New(storage *storage.Storage) Model {
 	var d list.DefaultDelegate
 	d = list.NewDefaultDelegate()
 	l := list.New([]list.Item{}, d, 0, 0)
@@ -63,7 +61,7 @@ func New(file string) Model {
 	l.SetShowHelp(false)
 	l.Title = "Related"
 
-	mdFormatter := formatter.NewMarkdownFormatter(file)
+	mdFormatter := formatter.NewMarkdownFormatter(storage)
 	tbs := tabs.New()
 	tbs.SetFormatter(mdFormatter)
 	return Model{
@@ -73,6 +71,7 @@ func New(file string) Model {
 		renderMarkdown:      true,
 		mode:                normal,
 		markdownFormatter:   mdFormatter,
+		storage:             storage,
 		help:                help.New(),
 	}
 }
@@ -88,6 +87,7 @@ type Model struct {
 	mode                mode
 	markdownFormatter   formatter.MarkdownFormatter
 	width               int
+	storage             *storage.Storage
 	help                help.Model
 }
 
@@ -136,7 +136,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 		case key.Matches(msg, m.mode.keyMap.Edit):
 			return m, cmd.EditEntry(m.getActiveRevision().Id())
 		case key.Matches(msg, m.mode.keyMap.View):
-			return m, cmd.ViewEntry(m.relatedList.SelectedItem().(item).id)
+			return m, cmd.ViewEntry(m.relatedList.SelectedItem().(glist.Item).Id())
 		case key.Matches(msg, m.mode.keyMap.ToggleMarkdown):
 			m.renderMarkdown = !m.renderMarkdown
 			if m.renderMarkdown {
@@ -198,26 +198,12 @@ func (m *Model) updateRelatedList() {
 	m.lastActiveRevision = m.getActiveRevision().Id()
 	m.lastActiveTab = m.tabs.ActiveTab
 
-	relatedIdentifier := m.getActiveRevision().RelatedIdentifier()
-	entries := markdown.GetEntriesWithTags(os.Args[1], []string{strings.TrimLeft(relatedIdentifier, "#")})
-	entries = lo.Filter(entries, func(entry storage.Entry, index int) bool {
-		return entry.Id() != m.getActiveRevision().Id()
-	})
-	items := lo.Map(entries, func(entry storage.Entry, index int) list.Item {
-		return item{id: entry.Id(), text: entry.Text(), tags: entry.Tags()}
-	})
+	entries := m.storage.GetRelatedTo(m.getActiveRevision())
 
-	m.relatedList.SetItems(items)
+	m.relatedList.SetItems(lo.Map(entries, func(entry storage.Entry, index int) list.Item {
+		return glist.EntryToItem(entry)
+	}))
 }
-
-type item struct {
-	id, text string
-	tags     []string
-}
-
-func (i item) Title() string       { return lo.FirstOrEmpty(strings.Split(i.text, "\n")) }
-func (i item) Description() string { return strings.Join(i.tags, ",") }
-func (i item) FilterValue() string { return i.text + " " + i.Description() }
 
 func (m Model) ShortHelp() []key.Binding {
 	return []key.Binding{
@@ -248,7 +234,7 @@ func (m Model) helpView() string {
 type keyMap struct {
 	Back           key.Binding
 	Edit           key.Binding
-	View key.Binding
+	View           key.Binding
 	ToggleMarkdown key.Binding
 	NormalMode     key.Binding
 	RelatedMode    key.Binding

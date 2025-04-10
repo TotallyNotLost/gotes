@@ -19,6 +19,7 @@ type Item struct {
 	tags     []string
 }
 
+func (i Item) Id() string          { return i.id }
 func (i Item) Title() string       { return lo.FirstOrEmpty(strings.Split(i.text, "\n")) }
 func (i Item) Description() string { return strings.Join(i.tags, ",") }
 func (i Item) FilterValue() string { return i.text + " " + i.Description() }

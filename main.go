@@ -31,12 +31,12 @@ var mainStyle = lipgloss.NewStyle().
 	BorderForeground(lipgloss.Color("62"))
 
 type model struct {
-	mode      mode
-	list      list.Model
-	viewer    viewer.Model
-	editor    editor.Model
-	entries   []storage.Entry
-	noteInfos map[string][]storage.Entry
+	mode    mode
+	list    list.Model
+	viewer  viewer.Model
+	editor  editor.Model
+	entries []storage.Entry
+	storage *storage.Storage
 }
 
 func (model model) Init() tea.Cmd {
@@ -61,8 +61,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case gotescmd.NewEntryMsg:
 		writeEntry(msg.GetId(), msg.GetBody(), msg.GetTags())
 		m.entries = markdown.LoadEntries(os.Args[1], markdown.AllEntriesFilter)
-		m.noteInfos = makeNoteInfos(m.entries)
-		m.list.SetItems(loadItems(m.noteInfos))
+		// m.noteInfos = makeNoteInfos(m.entries)
+		// m.list.SetItems(loadItems(m.storage))
 		m.mode = browsing
 		return m, nil
 	case gotescmd.EditEntryMsg:
@@ -91,7 +91,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.mode = editing
 		return m, nil
 	case gotescmd.ViewEntryMsg:
-		entries := m.noteInfos[msg.GetId()]
+		entries, ok := m.storage.Get(msg.GetId())
+
+		if !ok {
+			panic(fmt.Sprintf("1Couldn't find entry for %s", msg.GetId()))
+		}
 
 		m.mode = viewing
 
@@ -159,14 +163,15 @@ func writeEntry(id string, body string, tags []string) {
 func main() {
 	entries := markdown.LoadEntries(os.Args[1], markdown.AllEntriesFilter)
 	noteInfos := makeNoteInfos(entries)
-	items := loadItems(noteInfos)
+	storage := storage.New(noteInfos)
+	items := loadItems(storage)
 
 	m := &model{
-		list:      list.New(),
-		editor:    editor.New(),
-		viewer:    viewer.New(os.Args[1]),
-		entries:   entries,
-		noteInfos: noteInfos,
+		list:    list.New(),
+		editor:  editor.New(),
+		viewer:  viewer.New(storage),
+		entries: entries,
+		storage: storage,
 	}
 	m.list.SetItems(items)
 
@@ -177,14 +182,13 @@ func main() {
 	}
 }
 
-func loadItems(noteInfos map[string][]storage.Entry) []list.Item {
-	return lo.Map(lo.Values(noteInfos), func(entries []storage.Entry, index int) list.Item {
-		entry := lo.LastOrEmpty(entries)
+func loadItems(s *storage.Storage) []list.Item {
+	return lo.Map(s.GetLatestEntries(), func(entry storage.Entry, index int) list.Item {
 		return list.EntryToItem(entry)
 	})
 }
 
-func makeNoteInfos(entries []storage.Entry) map[string][]storage.Entry {
+func makeNoteInfos(entries []storage.Entry) *map[string][]storage.Entry {
 	m := make(map[string][]storage.Entry)
 
 	for _, n := range entries {
@@ -194,5 +198,5 @@ func makeNoteInfos(entries []storage.Entry) map[string][]storage.Entry {
 		m[n.Id()] = append(m[n.Id()], n)
 	}
 
-	return m
+	return &m
 }

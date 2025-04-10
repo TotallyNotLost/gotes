@@ -1,8 +1,8 @@
 package markdown
 
 import (
-	"github.com/samber/lo"
 	"github.com/TotallyNotLost/gotes/storage"
+	"github.com/samber/lo"
 	"log"
 	"os"
 	"regexp"
@@ -43,30 +43,6 @@ func SplitEntries(text string) []string {
 	}
 
 	return notes
-}
-
-func GetEntry(content string, id string) string {
-	var note string
-
-	notes := SplitEntries(content)
-
-	for _, n := range notes {
-		metadata := GetMetadata(n)
-		if i, ok := metadata["id"]; ok {
-			if i == id {
-				note = n
-			}
-		}
-	}
-
-	return note
-}
-
-// Returns all entries that have at least one of the provided tags.
-func GetEntriesWithTags(content string, tags []string) []storage.Entry {
-	return LoadEntries(content, func(entry storage.Entry) bool {
-		return lo.Some(entry.Tags(), tags)
-	})
 }
 
 func GetMetadata(text string) map[string]string {
