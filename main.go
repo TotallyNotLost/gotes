@@ -10,6 +10,7 @@ import (
 	"github.com/TotallyNotLost/gotes/viewer"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/log"
 	"github.com/google/uuid"
 	"github.com/samber/lo"
 	"os"
@@ -161,6 +162,7 @@ func writeEntry(id string, body string, tags []string) {
 }
 func main() {
 	store := storage.New(os.Args[1:])
+	verify(store)
 	items := latestEntriesAsItems(store)
 
 	m := &model{
@@ -177,6 +179,21 @@ func main() {
 
 	if _, err := p.Run(); err != nil {
 		panic(err)
+	}
+}
+
+func verify(s *storage.Storage) {
+	var unresolved []string
+	for _, entry := range s.GetLatestEntries() {
+		_, u := markdown.NewParser(s).Expand(entry.Text())
+		unresolved = append(unresolved, u...)
+	}
+
+	for _, identifier := range unresolved {
+		log.Errorf("Couldn't resolve identifier %s", identifier)
+	}
+	if len(unresolved) != 0 {
+		os.Exit(1)
 	}
 }
 

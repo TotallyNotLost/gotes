@@ -17,8 +17,11 @@ type Parser struct {
 	storage *storage.Storage
 }
 
-func (p Parser) Expand(md string) string {
-	return p.expandIncludes(p.expandLink(p.expandLinkShortSyntax(md)))
+// Returns the expanded string and a list of all the IDs that couldn't be resolved.
+func (p Parser) Expand(md string) (string, []string) {
+	link, u1 := p.expandLink(p.expandLinkShortSyntax(md))
+	expanded, u2 := p.expandIncludes(link)
+	return expanded, append(u1, u2...)
 }
 
 func (p Parser) expandLinkShortSyntax(md string) string {
@@ -31,31 +34,45 @@ func (p Parser) expandLinkShortSyntax(md string) string {
 	})
 }
 
-func (p Parser) expandLink(md string) string {
+func (p Parser) expandLink(md string) (string, []string) {
 	r, _ := regexp.Compile("\\[_metadata_:link\\]:# \"([^\"]*)\"")
-	return r.ReplaceAllStringFunc(md, func(metadata string) string {
-		identifier := p.normalizeIdentifier(r.FindStringSubmatch(metadata)[1])
-		entry, ok := p.storage.GetLatest(identifier)
-		if !ok {
-			panic(fmt.Sprintf("Couldn't find entry with id %s", identifier))
-		}
-		text := entry.Text()
-		title := lo.FirstOrEmpty(strings.Split(text, "\n"))
+	var unresolved []string
 
-		return fmt.Sprintf("[%s](%s)", title, identifier)
+	expanded := r.ReplaceAllStringFunc(md, func(metadata string) string {
+		identifier := p.normalizeIdentifier(r.FindStringSubmatch(metadata)[1])
+		if strings.HasPrefix(identifier, "$") {
+			id := strings.TrimLeft(identifier, "$")
+			entry, ok := p.storage.GetLatest(id)
+			if !ok {
+				unresolved = append(unresolved, identifier)
+			}
+			text := entry.Text()
+			title := lo.FirstOrEmpty(strings.Split(text, "\n"))
+
+			return fmt.Sprintf("[%s](%s)", title, identifier)
+		}
+		return ""
 	})
+
+	return expanded, unresolved
 }
 
-func (p Parser) expandIncludes(md string) string {
+func (p Parser) expandIncludes(md string) (string, []string) {
 	r, _ := regexp.Compile("\\[_metadata_:include\\]:# \"([^\"]*)\"")
+	var unresolved []string
 
-	return r.ReplaceAllStringFunc(md, func(metadata string) string {
+	expanded := r.ReplaceAllStringFunc(md, func(metadata string) string {
 		identifier := p.normalizeIdentifier(r.FindStringSubmatch(metadata)[1])
-		text := p.getTextForIdentifier(identifier)
+		text, ok := p.getTextForIdentifier(identifier)
+		if !ok {
+			unresolved = append(unresolved, identifier)
+		}
 		sanitized := strings.TrimSpace(RemoveMetadata(RemoveMetadata(text, "id"), "tags"))
 
 		return lipgloss.NewStyle().Border(lipgloss.NormalBorder()).Render(sanitized)
 	})
+
+	return expanded, unresolved
 }
 
 // Take the include and add optional parts.
@@ -89,15 +106,15 @@ func (p Parser) normalizeInclSelector(selector string) string {
 	return fmt.Sprintf("%s-%s", selector, selector)
 }
 
-func (p Parser) getTextForIdentifier(identifier string) string {
+func (p Parser) getTextForIdentifier(identifier string) (string, bool) {
 	if strings.HasPrefix(identifier, "$") {
 		id := strings.TrimLeft(identifier, "$")
 		entry, ok := p.storage.GetLatest(id)
 		if !ok {
-			panic(fmt.Sprintf("Couldn't find entry for %s", id))
+			return "", false
 		}
-		return entry.Text()
+		return entry.Text(), true
 	}
 
-	return identifier
+	return identifier, true
 }

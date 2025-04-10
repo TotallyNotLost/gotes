@@ -44,6 +44,7 @@ func (mf MarkdownFormatter) format(s string) string {
 		// wrap output at specific width (default is 80)
 		glamour.WithWordWrap(mf.width),
 	)
-	md, _ := r.Render(mf.parser.Expand(s))
+	expanded, _ := mf.parser.Expand(s)
+	md, _ := r.Render(expanded)
 	return md
 }

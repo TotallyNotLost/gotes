@@ -3,8 +3,8 @@ package storage
 import (
 	"crypto/sha1"
 	"encoding/hex"
+	"github.com/charmbracelet/log"
 	"github.com/samber/lo"
-	"log"
 	"os"
 	"regexp"
 	"strings"
@@ -43,10 +43,12 @@ func loadEntries(file string) []Entry {
 		if t, ok := metadata["tags"]; ok {
 			tags = strings.Split(t, ",")
 		}
+
 		relatedIdentifier := metadata["related"]
-		relatedTags := lo.Map(strings.Split(relatedIdentifier, ","), func(identifier string, index int) string {
+		removeHashtagPrefix := func(identifier string, index int) string {
 			return strings.TrimLeft(identifier, "#")
-		})
+		}
+		relatedTags := lo.Map(strings.Split(relatedIdentifier, ","), removeHashtagPrefix)
 
 		entry := NewEntry(id, file, 0, 0, text, tags, relatedTags)
 		entries = append(entries, entry)
