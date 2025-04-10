@@ -45,12 +45,27 @@ func loadEntries(file string) []Entry {
 		}
 
 		relatedIdentifier := metadata["related"]
+		isNotEmpty := func(s string, index int) bool {
+			return s != ""
+		}
+		relatedIdentifiers := lo.Filter(strings.Split(relatedIdentifier, ","), isNotEmpty)
+		hasHashtagPrefix := func(identifier string, index int) bool {
+			return strings.HasPrefix(identifier, "#")
+		}
+		notHasHashtagPrefix := func(identifier string, index int) bool {
+			return !hasHashtagPrefix(identifier, index)
+		}
 		removeHashtagPrefix := func(identifier string, index int) string {
 			return strings.TrimLeft(identifier, "#")
 		}
-		relatedTags := lo.Map(strings.Split(relatedIdentifier, ","), removeHashtagPrefix)
+		relatedTags := lo.Map(lo.Filter(relatedIdentifiers, hasHashtagPrefix), removeHashtagPrefix)
+		createRegexp := func(identifier string, index int) *regexp.Regexp {
+			r, _ := regexp.Compile(identifier)
+			return r
+		}
+		relatedRegexps := lo.Map(lo.Filter(relatedIdentifiers, notHasHashtagPrefix), createRegexp)
 
-		entry := NewEntry(id, file, 0, 0, text, tags, relatedTags)
+		entry := NewEntry(id, file, 0, 0, text, tags, relatedTags, relatedRegexps)
 		entries = append(entries, entry)
 	}
 
@@ -130,14 +145,14 @@ func (s *Storage) GetLatestEntries() []Entry {
 	})
 }
 
-func (s *Storage) FindEntriesWithTags(tags []string) []Entry {
-	return lo.Filter(s.GetLatestEntries(), func(entry Entry, index int) bool {
-		return lo.Some(entry.Tags(), tags)
+func (s *Storage) FindEntriesRelatedTo(e Entry) []Entry {
+	return lo.Filter(s.GetLatestEntries(), func(e2 Entry, index int) bool {
+		return e.IsRelated(e2)
 	})
 }
 
 func (s *Storage) GetRelatedTo(entry Entry) []Entry {
-	entries := s.FindEntriesWithTags(entry.RelatedTags())
+	entries := s.FindEntriesRelatedTo(entry)
 
 	return lo.Filter(entries, func(e Entry, index int) bool {
 		return e.Id() != entry.Id()

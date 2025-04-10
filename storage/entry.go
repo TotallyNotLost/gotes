@@ -1,24 +1,31 @@
 package storage
 
+import (
+	"github.com/samber/lo"
+	"regexp"
+)
+
 type Entry struct {
-	id          string
-	file        string
-	start       int
-	end         int
-	text        string
-	tags        []string
-	relatedTags []string
+	id             string
+	file           string
+	start          int
+	end            int
+	text           string
+	tags           []string
+	relatedTags    []string
+	relatedRegexps []*regexp.Regexp
 }
 
-func NewEntry(id string, file string, start int, end int, text string, tags []string, relatedTags []string) Entry {
+func NewEntry(id string, file string, start int, end int, text string, tags []string, relatedTags []string, relatedRegexps []*regexp.Regexp) Entry {
 	return Entry{
-		id:          id,
-		file:        file,
-		start:       start,
-		end:         end,
-		text:        text,
-		tags:        tags,
-		relatedTags: relatedTags,
+		id:             id,
+		file:           file,
+		start:          start,
+		end:            end,
+		text:           text,
+		tags:           tags,
+		relatedTags:    relatedTags,
+		relatedRegexps: relatedRegexps,
 	}
 }
 
@@ -46,6 +53,15 @@ func (e Entry) Tags() []string {
 	return e.tags
 }
 
-func (e Entry) RelatedTags() []string {
-	return e.relatedTags
+func (e Entry) IsRelated(e2 Entry) bool {
+	some := lo.Some(e.relatedTags, e2.Tags())
+
+	if some {
+		return true
+	}
+
+	matches := func(r *regexp.Regexp, index int) bool {
+		return r.Match([]byte(e.Text()))
+	}
+	return len(lo.Filter(e2.relatedRegexps, matches)) > 0
 }

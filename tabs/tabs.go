@@ -34,7 +34,7 @@ var (
 			Padding(0, 1).
 			MarginRight(1)
 	statusTextStyle = lipgloss.NewStyle().Inherit(statusBarStyle)
-	scrollStyle = lipgloss.NewStyle().
+	scrollStyle     = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("#FFFDF5")).
 			Padding(0, 1).
 			Background(lipgloss.Color("#A550DF")).
@@ -76,8 +76,11 @@ func (m *Model) SetHeight(height int) {
 }
 
 func (m *Model) AdjustHeight() {
-	verticalHeight := lipgloss.Height(m.tabsView()) + lipgloss.Height(m.footerView())
-	m.viewport.Height = m.height - verticalHeight - 1
+	verticalHeight := lipgloss.Height(m.footerView())
+	if len(m.tabs) != 1 {
+		verticalHeight -= lipgloss.Height(m.tabsView())
+	}
+	m.viewport.Height = m.height - verticalHeight
 }
 
 func (m *Model) SetWidth(width int) {
@@ -120,6 +123,9 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 
 func (m Model) View() string {
 	m.viewport.SetContent(m.content())
+	if len(m.tabs) == 1 {
+		return lipgloss.JoinVertical(lipgloss.Left, m.viewport.View(), m.footerView())
+	}
 	return lipgloss.JoinVertical(lipgloss.Left, m.tabsView(), m.viewport.View(), m.footerView())
 }
 
