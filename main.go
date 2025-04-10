@@ -107,13 +107,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
-	m.viewer, vcmd = m.viewer.Update(msg)
 	if m.mode == viewing {
+		m.viewer, vcmd = m.viewer.Update(msg)
 		return m, vcmd
 	}
 
-	m.editor, cmd = m.editor.Update(msg)
 	if m.mode == editing {
+		m.editor, cmd = m.editor.Update(msg)
 		return m, cmd
 	}
 
