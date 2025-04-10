@@ -35,7 +35,6 @@ type model struct {
 	list    list.Model
 	viewer  viewer.Model
 	editor  editor.Model
-	entries []storage.Entry
 	storage *storage.Storage
 }
 
@@ -60,9 +59,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 	case gotescmd.NewEntryMsg:
 		writeEntry(msg.GetId(), msg.GetBody(), msg.GetTags())
-		m.entries = markdown.LoadEntries(os.Args[1], markdown.AllEntriesFilter)
-		// m.noteInfos = makeNoteInfos(m.entries)
-		// m.list.SetItems(loadItems(m.storage))
+		m.storage.LoadFromFiles()
+		items := loadItems(m.storage)
+		m.list.SetItems(items)
 		m.mode = browsing
 		return m, nil
 	case gotescmd.EditEntryMsg:
@@ -73,9 +72,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			id = uuid.New().String()
 		} else {
 			var ok bool
-			entry, _, ok = lo.FindLastIndexOf(m.entries, func(entry storage.Entry) bool {
-				return entry.Id() == id
-			})
+			entry, ok = m.storage.GetLatest(id)
 			if !ok {
 				panic(fmt.Sprintf("Can't find entry %s", id))
 			}
@@ -161,17 +158,14 @@ func writeEntry(id string, body string, tags []string) {
 	}
 }
 func main() {
-	entries := markdown.LoadEntries(os.Args[1], markdown.AllEntriesFilter)
-	noteInfos := makeNoteInfos(entries)
-	storage := storage.New(noteInfos)
-	items := loadItems(storage)
+	store := storage.New(os.Args[1:])
+	items := loadItems(store)
 
 	m := &model{
 		list:    list.New(),
 		editor:  editor.New(),
-		viewer:  viewer.New(storage),
-		entries: entries,
-		storage: storage,
+		viewer:  viewer.New(store),
+		storage: store,
 	}
 	m.list.SetItems(items)
 
@@ -188,15 +182,3 @@ func loadItems(s *storage.Storage) []list.Item {
 	})
 }
 
-func makeNoteInfos(entries []storage.Entry) *map[string][]storage.Entry {
-	m := make(map[string][]storage.Entry)
-
-	for _, n := range entries {
-		if _, ok := m[n.Id()]; !ok {
-			m[n.Id()] = []storage.Entry{}
-		}
-		m[n.Id()] = append(m[n.Id()], n)
-	}
-
-	return &m
-}
