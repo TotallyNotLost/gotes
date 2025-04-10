@@ -51,7 +51,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, gotescmd.ViewEntry(i.entry)
 			}
 		case "n":
-			text := fmt.Sprintf("[_metadata_:id]:# \"%s\"", uuid.New().String())
+			text := fmt.Sprintf("[_metadata_:id]:# \"%s\"\n[_metadata_:tags]:# \"\"", uuid.New().String())
 			entry := storage.NewEntry(os.Args[1], text, 0, 0, 0)
 			return m, gotescmd.EditEntry(entry)
 		case "e":
