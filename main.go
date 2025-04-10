@@ -63,8 +63,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.list.SetItems(lo.Filter(items, func(item list.Item, index int) bool {
 			return item.File() == os.Args[1]
 		}))
-		m.mode = browsing
-		return m, nil
+		return m, gotescmd.ViewEntry(msg.GetEntry())
 	case gotescmd.EditEntryMsg:
 		m.editor.SetEntry(msg.GetEntry())
 		m.mode = editing

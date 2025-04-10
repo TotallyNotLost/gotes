@@ -1,10 +1,12 @@
 package list
 
 import (
+	"fmt"
 	gotescmd "github.com/TotallyNotLost/gotes/cmd"
 	"github.com/TotallyNotLost/gotes/storage"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/google/uuid"
 	"github.com/samber/lo"
 	"os"
 	"strings"
@@ -49,7 +51,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, gotescmd.ViewEntry(i.entry)
 			}
 		case "n":
-			var entry storage.Entry
+			text := fmt.Sprintf("[_metadata_:id]:# \"%s\"", uuid.New().String())
+			entry := storage.NewEntry(os.Args[1], text, 0, 0, 0)
 			return m, gotescmd.EditEntry(entry)
 		case "e":
 			i, ok := m.list.SelectedItem().(Item)
