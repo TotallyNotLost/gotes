@@ -71,7 +71,7 @@ func NewEntry(file string, text string, start int, end int, index int) Entry {
 		return r
 	}
 	// Auto-match when an entry has this entry's id in its body.
-	relatedRegexps := []*regexp.Regexp{createRegexp(fmt.Sprintf("$%s", id), 0)}
+	relatedRegexps := []*regexp.Regexp{createRegexp(fmt.Sprintf("\\$%s", id), 0)}
 
 	relatedRegexps = append(relatedRegexps, lo.Map(lo.Filter(relatedIdentifiers, notHasPrefix), createRegexp)...)
 
