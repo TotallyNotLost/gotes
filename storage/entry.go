@@ -2,8 +2,8 @@ package storage
 
 import (
 	"crypto/sha1"
-	"fmt"
 	"encoding/hex"
+	"fmt"
 	"github.com/samber/lo"
 	"regexp"
 	"strings"
@@ -70,12 +70,10 @@ func NewEntry(file string, text string, start int, end int, index int) Entry {
 		r, _ := regexp.Compile(identifier)
 		return r
 	}
-	relatedRegexps := lo.Map(lo.Filter(relatedIdentifiers, notHasPrefix), createRegexp)
-
 	// Auto-match when an entry has this entry's id in its body.
-	if len(id) > 12 {
-		relatedRegexps = append(relatedRegexps, createRegexp(id, 0))
-	}
+	relatedRegexps := []*regexp.Regexp{createRegexp(fmt.Sprintf("$%s", id), 0)}
+
+	relatedRegexps = append(relatedRegexps, lo.Map(lo.Filter(relatedIdentifiers, notHasPrefix), createRegexp)...)
 
 	return Entry{
 		id:             id,
