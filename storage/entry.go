@@ -72,6 +72,9 @@ func NewEntry(file string, text string, start int, end int, index int) Entry {
 	}
 	relatedRegexps := lo.Map(lo.Filter(relatedIdentifiers, notHasPrefix), createRegexp)
 
+	// Auto-match when an entry has this entry's id in its body.
+	relatedRegexps = append(relatedRegexps, createRegexp(id, 0))
+
 	return Entry{
 		id:             id,
 		file:           file,
