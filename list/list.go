@@ -87,6 +87,10 @@ func (m Model) View() string {
 	return m.list.View()
 }
 
+func (m *Model) SetTitle(title string) {
+	m.list.Title = title
+}
+
 func (m *Model) SetSize(width int, height int) {
 	m.list.SetSize(width, height)
 }
@@ -121,7 +125,6 @@ func New() Model {
 
 func newList() list.Model {
 	l := list.New([]list.Item{}, list.NewDefaultDelegate(), 0, 0)
-	l.Title = os.Args[1]
 
 	return l
 }

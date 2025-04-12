@@ -30,12 +30,13 @@ var mainStyle = lipgloss.NewStyle().
 	BorderForeground(lipgloss.Color("62"))
 
 type model struct {
-	mode    mode
-	list    list.Model
-	viewer  viewer.Model
-	editor  editor.Model
-	storage *storage.Storage
-	width   int
+	mode         mode
+	list         list.Model
+	viewer       viewer.Model
+	editor       editor.Model
+	storage      *storage.Storage
+	selectedFile string
+	width        int
 }
 
 func (model model) Init() tea.Cmd {
@@ -101,6 +102,8 @@ func (m model) newEntry(entry storage.Entry) {
 }
 
 func (m *model) viewEntry(entry storage.Entry) {
+	m.selectedFile = entry.File()
+	m.SetItems()
 	entries, ok := m.storage.Get(entry.Id())
 
 	if !ok {
@@ -161,13 +164,24 @@ func writeEntry(entry storage.Entry) {
 	f.WriteString("\n---\n")
 	f.WriteString(entry.String())
 }
+
+func (m *model) SetItems() {
+	items := latestEntriesAsItems(m.storage)
+	items = lo.Filter(items, func(item *list.Item, index int) bool {
+		return item.File() == m.selectedFile
+	})
+
+	if len(items) == 1 {
+		m.viewEntry(items[0].Entry())
+	}
+
+	m.list.SetItems(items)
+	m.list.SetTitle(m.selectedFile)
+}
+
 func main() {
 	store := storage.New(lo.Uniq(os.Args[1:]))
 	verify(store)
-	items := latestEntriesAsItems(store)
-	items = lo.Filter(items, func(item *list.Item, index int) bool {
-		return item.File() == os.Args[1]
-	})
 
 	m := &model{
 		list:    list.New(),
@@ -176,11 +190,8 @@ func main() {
 		storage: store,
 	}
 
-	if len(items) == 1 {
-		m.viewEntry(items[0].Entry())
-	}
-
-	m.list.SetItems(items)
+	m.selectedFile = os.Args[1]
+	m.SetItems()
 
 	p := tea.NewProgram(m, tea.WithAltScreen())
 
