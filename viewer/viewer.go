@@ -178,7 +178,7 @@ func (m Model) View() string {
 
 func (m Model) tagsView() string {
 	revision := m.getActiveRevision()
-	return lipgloss.JoinHorizontal(lipgloss.Center, tags.RenderTags(revision.Tags()))
+	return lipgloss.JoinHorizontal(lipgloss.Center, tags.RenderTags(revision.RelatedIds()))
 }
 
 func (m *Model) updateRelatedList() {

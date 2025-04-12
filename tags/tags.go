@@ -1,7 +1,6 @@
 package tags
 
 import (
-	"fmt"
 	"github.com/charmbracelet/lipgloss"
 )
 
@@ -15,7 +14,7 @@ func RenderTags(tags []string) string {
 
 	for i, t := range tags {
 		color := tagColors[i%len(tagColors)]
-		tag := tagsStyle.Background(lipgloss.Color(color)).Render(fmt.Sprintf("#%s", t))
+		tag := tagsStyle.Background(lipgloss.Color(color)).Render(t)
 		tgs = append(tgs, tag)
 	}
 
