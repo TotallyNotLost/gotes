@@ -87,7 +87,7 @@ func (m model) newEntry(entry storage.Entry) {
 	writeEntry(entry)
 	m.storage.AddEntry(entry)
 	items := latestEntriesAsItems(m.storage)
-	m.list.SetItems(lo.Filter(items, func(item list.Item, index int) bool {
+	m.list.SetItems(lo.Filter(items, func(item *list.Item, index int) bool {
 		return item.File() == os.Args[1]
 	}))
 }
@@ -138,7 +138,7 @@ func main() {
 	store := storage.New(os.Args[1:])
 	verify(store)
 	items := latestEntriesAsItems(store)
-	items = lo.Filter(items, func(item list.Item, index int) bool {
+	items = lo.Filter(items, func(item *list.Item, index int) bool {
 		return item.File() == os.Args[1]
 	})
 
@@ -184,8 +184,8 @@ func verify(s *storage.Storage) {
 	}
 }
 
-func latestEntriesAsItems(s *storage.Storage) []list.Item {
-	return lo.Map(s.GetLatestEntries(), func(entry storage.Entry, index int) list.Item {
-		return list.EntryToItem(entry)
+func latestEntriesAsItems(s *storage.Storage) []*list.Item {
+	return lo.Map(s.GetLatestEntries(), func(entry storage.Entry, index int) *list.Item {
+		return list.EntryToItem(s, entry)
 	})
 }

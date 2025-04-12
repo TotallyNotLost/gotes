@@ -138,7 +138,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 		case key.Matches(msg, m.mode.keyMap.Edit):
 			return m, cmd.EditEntry(m.getActiveRevision())
 		case key.Matches(msg, m.mode.keyMap.View):
-			entry := m.relatedList.SelectedItem().(glist.Item).Entry()
+			entry := m.relatedList.SelectedItem().(*glist.Item).Entry()
 			return m, cmd.ViewEntry(entry)
 		case key.Matches(msg, m.mode.keyMap.ToggleMarkdown):
 			m.renderMarkdown = !m.renderMarkdown
@@ -204,7 +204,7 @@ func (m *Model) updateRelatedList() {
 	entries := m.storage.GetRelatedTo(m.getActiveRevision())
 
 	m.relatedList.SetItems(lo.Map(entries, func(entry storage.Entry, index int) list.Item {
-		return glist.EntryToItem(entry)
+		return glist.EntryToItem(m.storage, entry)
 	}))
 }
 

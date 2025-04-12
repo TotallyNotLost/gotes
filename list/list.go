@@ -12,19 +12,30 @@ import (
 	"strings"
 )
 
-func EntryToItem(entry storage.Entry) Item {
-	return Item{entry: entry}
+func EntryToItem(s *storage.Storage, entry storage.Entry) *Item {
+	var getLatestEntry = func(id string) (storage.Entry, bool) {
+		return s.GetLatest(id)
+	}
+	return &Item{entry: entry, getLatestEntry: getLatestEntry}
 }
 
 type Item struct {
-	entry storage.Entry
+	storage        *storage.Storage
+	entry          storage.Entry
+	getLatestEntry func(id string) (storage.Entry, bool)
 }
 
-func (i Item) Entry() storage.Entry { return i.entry }
-func (i Item) File() string         { return i.entry.File() }
-func (i Item) Title() string        { return lo.FirstOrEmpty(strings.Split(i.entry.Text(), "\n")) }
-func (i Item) Description() string  { return strings.Join(i.entry.Tags(), ",") }
-func (i Item) FilterValue() string  { return i.Title() + " " + i.Description() }
+func (i *Item) Entry() storage.Entry { return i.entry }
+func (i *Item) File() string         { return i.entry.File() }
+func (i *Item) Title() string        { return lo.FirstOrEmpty(strings.Split(i.entry.Text(), "\n")) }
+func (i *Item) Description() string {
+	tags := lo.Map(i.entry.RelatedIds(), func(id string, index int) string {
+		entry, _ := i.getLatestEntry(id)
+		return entry.Text()
+	})
+	return strings.Join(tags, ",")
+}
+func (i *Item) FilterValue() string { return i.Title() + " " + i.Description() }
 
 type Model struct {
 	list list.Model
@@ -46,7 +57,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		switch msg.String() {
 		case "enter":
-			i, ok := m.list.SelectedItem().(Item)
+			i, ok := m.list.SelectedItem().(*Item)
 			if ok {
 				return m, gotescmd.ViewEntry(i.entry)
 			}
@@ -55,7 +66,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			entry := storage.NewEntry(os.Args[1], text, 0, 0, 0)
 			return m, gotescmd.EditEntry(entry)
 		case "e":
-			i, ok := m.list.SelectedItem().(Item)
+			i, ok := m.list.SelectedItem().(*Item)
 			if ok {
 				return m, gotescmd.EditEntry(i.entry)
 			}
@@ -73,8 +84,8 @@ func (m *Model) SetSize(width int, height int) {
 	m.list.SetSize(width, height)
 }
 
-func (m *Model) SetItems(items []Item) {
-	m.list.SetItems(lo.Map(items, func(item Item, index int) list.Item {
+func (m *Model) SetItems(items []*Item) {
+	m.list.SetItems(lo.Map(items, func(item *Item, index int) list.Item {
 		return item
 	}))
 }
