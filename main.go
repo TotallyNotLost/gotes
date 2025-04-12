@@ -35,6 +35,7 @@ type model struct {
 	viewer  viewer.Model
 	editor  editor.Model
 	storage *storage.Storage
+	width   int
 }
 
 func (model model) Init() tea.Cmd {
@@ -46,10 +47,15 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
+		m.width = msg.Width
 		width := msg.Width - mainStyle.GetWidth()
-		height := msg.Height - lipgloss.Height(mainStyle.Render(""))
+		height := msg.Height
 		m.list.SetSize(width, height)
-		m.viewer.SetHeight(height)
+		if m.width >= 100 {
+			m.list.SetSize(min(40, int(0.3*float64(m.width))), height)
+			width -= lipgloss.Width(m.list.View())
+		}
+		m.viewer.SetHeight(height - 2)
 		m.viewer.SetWidth(width)
 		m.editor.SetHeight(height)
 		m.editor.SetWidth(width)
@@ -65,6 +71,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 	case gotescmd.ViewEntryMsg:
 		m.viewEntry(msg.GetEntry())
+		m.mode = viewing
 		return m, nil
 	}
 
@@ -80,6 +87,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	l, cmd := m.list.Update(msg)
 	m.list = l.(list.Model)
+	m.viewEntry(m.list.SelectedItem().Entry())
 	return m, tea.Batch(cmd, vcmd)
 }
 
@@ -99,8 +107,6 @@ func (m *model) viewEntry(entry storage.Entry) {
 		panic(fmt.Sprintf("Couldn't find revisions for %s", entry.Id()))
 	}
 
-	m.mode = viewing
-
 	revisions := []storage.Entry{}
 	for _, no := range slices.Backward(entries) {
 		revisions = append(revisions, no)
@@ -109,18 +115,39 @@ func (m *model) viewEntry(entry storage.Entry) {
 }
 
 func (m model) View() string {
+	m.viewer.SetFocused(false)
+	m.list.SetFocused(false)
+
 	var view string
 
 	switch m.mode {
-	case browsing:
-		view = m.list.View()
-	case viewing:
-		view = m.viewer.View()
 	case editing:
 		view = m.editor.View()
+	case browsing:
+		m.list.SetFocused(true)
+		view = m.listView()
+	case viewing:
+		m.viewer.SetFocused(true)
+		view = m.viewerView()
 	}
 
 	return view
+}
+
+func (m model) listView() string {
+	if m.width < 100 {
+		return m.list.View()
+	}
+
+	return lipgloss.JoinHorizontal(lipgloss.Top, m.list.View(), m.viewer.View())
+}
+
+func (m model) viewerView() string {
+	if m.width < 100 {
+		return m.viewer.View()
+	}
+
+	return m.listView()
 }
 
 func writeEntry(entry storage.Entry) {

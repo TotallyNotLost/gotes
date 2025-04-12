@@ -15,9 +15,10 @@ var (
 	viewportStyle = docStyle.
 			BorderForeground(highlightColor).
 			Border(lipgloss.NormalBorder())
-	tabsStyle        = lipgloss.NewStyle()
-	highlightColor   = lipgloss.AdaptiveColor{Light: "#874BFD", Dark: "7"}
-	inactiveTabStyle = lipgloss.NewStyle().
+	focusedViewportStyle = viewportStyle.BorderForeground(lipgloss.Color("13"))
+	tabsStyle            = lipgloss.NewStyle()
+	highlightColor       = lipgloss.AdaptiveColor{Light: "#874BFD", Dark: "7"}
+	inactiveTabStyle     = lipgloss.NewStyle().
 				BorderForeground(lipgloss.Color("241")).
 				Foreground(lipgloss.Color("241")).
 				Border(lipgloss.NormalBorder())
@@ -43,7 +44,6 @@ var (
 
 func New() Model {
 	vp := viewport.New(0, 0)
-	vp.Style = viewportStyle
 	return Model{
 		viewport:  vp,
 		formatter: formatter.Default,
@@ -86,6 +86,14 @@ func (m *Model) AdjustHeight() {
 func (m *Model) SetWidth(width int) {
 	m.width = width
 	m.viewport.Width = width
+}
+
+func (m *Model) SetFocused(focused bool) {
+	if focused {
+		m.viewport.Style = focusedViewportStyle
+	} else {
+		m.viewport.Style = viewportStyle
+	}
 }
 
 func (m Model) GetTabs() []Tab {

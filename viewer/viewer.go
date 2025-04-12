@@ -39,7 +39,7 @@ func (m mode) Equal(m2 mode) bool {
 var normal = mode{
 	id: 0,
 	keyMap: keyMap{
-		Back:           key.NewBinding(key.WithKeys("backspace", "q"), key.WithHelp("q", "back")),
+		Back:           key.NewBinding(key.WithKeys("esc"), key.WithHelp("esc", "back")),
 		Edit:           key.NewBinding(key.WithKeys("e"), key.WithHelp("e", "edit")),
 		ToggleMarkdown: key.NewBinding(key.WithKeys("m"), key.WithHelp("m", "toggle markdown")),
 		RelatedMode:    key.NewBinding(key.WithKeys("r"), key.WithHelp("r", "related")),
@@ -125,6 +125,10 @@ func (m *Model) SetRevisions(revisions []storage.Entry) {
 	m.updateRelatedList()
 }
 
+func (m *Model) SetFocused(focused bool) {
+	m.tabs.SetFocused(focused)
+}
+
 func (m Model) Init() tea.Cmd {
 	return nil
 }
@@ -170,7 +174,7 @@ func (m Model) View() string {
 	viewer := lipgloss.JoinVertical(lipgloss.Left, m.tagsView(), body, m.helpView())
 
 	if m.width < minWidthForRelated {
-		return lipgloss.JoinHorizontal(lipgloss.Top, viewerStyle.Render(viewer))
+		return viewerStyle.Render(viewer)
 	}
 
 	return lipgloss.JoinHorizontal(lipgloss.Top, viewerStyle.Render(viewer), m.relatedList.View())

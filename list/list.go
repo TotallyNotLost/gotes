@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/samber/lo"
 	"os"
+	"slices"
 	"strings"
 )
 
@@ -61,12 +62,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		switch msg.String() {
 		case "enter":
-			i, ok := m.list.SelectedItem().(*Item)
-			if ok {
-				return m, gotescmd.ViewEntry(i.entry)
-			}
+			i := m.SelectedItem()
+			return m, gotescmd.ViewEntry(i.entry)
 		case "n":
-			text := fmt.Sprintf("[_metadata_:id]:# \"%s\"\n[_metadata_:tags]:# \"\"", uuid.New().String())
+			text := fmt.Sprintf("[_metadata_:id]:# \"%s\"\n[_metadata_:related]:# \"\"", uuid.New().String())
 			entry := storage.NewEntry(os.Args[1], text, 0, 0, 0)
 			return m, gotescmd.EditEntry(entry)
 		case "e":
@@ -80,6 +79,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, tea.Batch(cmd, vcmd)
 }
 
+func (m Model) SelectedItem() *Item {
+	return m.list.SelectedItem().(*Item)
+}
+
 func (m Model) View() string {
 	return m.list.View()
 }
@@ -89,9 +92,25 @@ func (m *Model) SetSize(width int, height int) {
 }
 
 func (m *Model) SetItems(items []*Item) {
-	m.list.SetItems(lo.Map(items, func(item *Item, index int) list.Item {
+	notDoneItems := lo.Filter(items, func(item *Item, index int) bool {
+		return !slices.Contains(item.entry.RelatedIds(), "#Done")
+	})
+	m.list.SetItems(lo.Map(notDoneItems, func(item *Item, index int) list.Item {
 		return item
 	}))
+}
+
+func (m *Model) SetFocused(focused bool) {
+	var d list.DefaultDelegate
+	d = list.NewDefaultDelegate()
+
+	if !focused {
+		// Change colors
+		d.Styles.SelectedTitle = d.Styles.NormalTitle
+		d.Styles.SelectedDesc = d.Styles.NormalDesc
+	}
+
+	m.list.SetDelegate(d)
 }
 
 func New() Model {
