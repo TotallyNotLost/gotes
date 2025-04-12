@@ -135,7 +135,7 @@ func writeEntry(entry storage.Entry) {
 	f.WriteString(entry.String())
 }
 func main() {
-	store := storage.New(os.Args[1:])
+	store := storage.New(lo.Uniq(os.Args[1:]))
 	verify(store)
 	items := latestEntriesAsItems(store)
 	items = lo.Filter(items, func(item *list.Item, index int) bool {
