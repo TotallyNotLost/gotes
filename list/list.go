@@ -25,13 +25,17 @@ type Item struct {
 	getLatestEntry func(id string) (storage.Entry, bool)
 }
 
+func title(entry storage.Entry) string {
+	return lo.FirstOrEmpty(strings.Split(entry.Text(), "\n"))
+}
+
 func (i *Item) Entry() storage.Entry { return i.entry }
 func (i *Item) File() string         { return i.entry.File() }
-func (i *Item) Title() string        { return lo.FirstOrEmpty(strings.Split(i.entry.Text(), "\n")) }
+func (i *Item) Title() string        { return title(i.entry) }
 func (i *Item) Description() string {
 	tags := lo.Map(i.entry.RelatedIds(), func(id string, index int) string {
 		entry, _ := i.getLatestEntry(id)
-		return entry.Text()
+		return title(entry)
 	})
 	return strings.Join(tags, ",")
 }
