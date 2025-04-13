@@ -86,7 +86,7 @@ type Model struct {
 	lastActiveTab       int
 	renderMarkdown      bool
 	mode                mode
-	markdownFormatter   formatter.MarkdownFormatter
+	markdownFormatter   *formatter.MarkdownFormatter
 	width               int
 	storage             *storage.Storage
 	help                help.Model

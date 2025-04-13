@@ -6,15 +6,23 @@ import (
 	"github.com/charmbracelet/glamour"
 )
 
-func NewMarkdownFormatter(storage *storage.Storage) MarkdownFormatter {
-	return MarkdownFormatter{
+func NewMarkdownFormatter(storage *storage.Storage) *MarkdownFormatter {
+	renderer, _ := glamour.NewTermRenderer(
+		// detect background color and pick either the default dark or light theme
+		glamour.WithAutoStyle(),
+		// wrap output at specific width (default is 80)
+		// glamour.WithWordWrap(mf.width),
+	)
+	return &MarkdownFormatter{
+		renderer: renderer,
 		parser: markdown.NewParser(storage),
 		memo:   make(map[string]string),
 	}
 }
 
 type MarkdownFormatter struct {
-	parser markdown.Parser
+	renderer *glamour.TermRenderer
+	parser *markdown.Parser
 	width  int
 	memo   map[string]string
 }
@@ -23,7 +31,7 @@ func (mf *MarkdownFormatter) SetWidth(width int) {
 	mf.width = width
 }
 
-func (mf MarkdownFormatter) Format(s string) string {
+func (mf *MarkdownFormatter) Format(s string) string {
 	var (
 		f  string
 		ok bool
@@ -37,14 +45,8 @@ func (mf MarkdownFormatter) Format(s string) string {
 	return f
 }
 
-func (mf MarkdownFormatter) format(s string) string {
-	r, _ := glamour.NewTermRenderer(
-		// detect background color and pick either the default dark or light theme
-		glamour.WithAutoStyle(),
-		// wrap output at specific width (default is 80)
-		glamour.WithWordWrap(mf.width),
-	)
+func (mf *MarkdownFormatter) format(s string) string {
 	expanded, _ := mf.parser.Expand(s)
-	md, _ := r.Render(expanded)
+	md, _ := mf.renderer.Render(expanded)
 	return md
 }

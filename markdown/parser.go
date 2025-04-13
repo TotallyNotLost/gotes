@@ -9,8 +9,8 @@ import (
 	"strings"
 )
 
-func NewParser(storage *storage.Storage) Parser {
-	return Parser{storage: storage}
+func NewParser(storage *storage.Storage) *Parser {
+	return &Parser{storage: storage}
 }
 
 type Parser struct {
@@ -18,13 +18,13 @@ type Parser struct {
 }
 
 // Returns the expanded string and a list of all the IDs that couldn't be resolved.
-func (p Parser) Expand(md string) (string, []string) {
+func (p *Parser) Expand(md string) (string, []string) {
 	link, u1 := p.expandLink(p.expandLinkShortSyntax(md))
 	expanded, u2 := p.expandIncludes(link)
 	return expanded, append(u1, u2...)
 }
 
-func (p Parser) expandLinkShortSyntax(md string) string {
+func (p *Parser) expandLinkShortSyntax(md string) string {
 	r, _ := regexp.Compile("\\{\\$([-0-9a-zA-Z]+)\\}")
 
 	return r.ReplaceAllStringFunc(md, func(metadata string) string {
@@ -34,7 +34,7 @@ func (p Parser) expandLinkShortSyntax(md string) string {
 	})
 }
 
-func (p Parser) expandLink(md string) (string, []string) {
+func (p *Parser) expandLink(md string) (string, []string) {
 	r, _ := regexp.Compile("\\[_metadata_:link\\]:# \"([^\"]*)\"")
 	var unresolved []string
 
@@ -57,7 +57,7 @@ func (p Parser) expandLink(md string) (string, []string) {
 	return expanded, unresolved
 }
 
-func (p Parser) expandIncludes(md string) (string, []string) {
+func (p *Parser) expandIncludes(md string) (string, []string) {
 	r, _ := regexp.Compile("\\[_metadata_:include\\]:# \"([^\"]*)\"")
 	var unresolved []string
 
@@ -80,7 +80,7 @@ func (p Parser) expandIncludes(md string) (string, []string) {
 //
 // Normalized format:
 // [selector]
-func (p Parser) normalizeIdentifier(incl string) string {
+func (p *Parser) normalizeIdentifier(incl string) string {
 	return p.normalizeInclSelector(incl)
 }
 
@@ -89,7 +89,7 @@ func (p Parser) normalizeIdentifier(incl string) string {
 // 1. <epty> - Return the entire contents of the file.
 // 2. #{id} -> The ID of a note within the file.
 // 3. {start}-{end} -> Line numbers to include. Start is inclusive, end is exclusive.
-func (p Parser) normalizeInclSelector(selector string) string {
+func (p *Parser) normalizeInclSelector(selector string) string {
 	if selector == "" {
 		return selector
 	}
@@ -106,7 +106,7 @@ func (p Parser) normalizeInclSelector(selector string) string {
 	return fmt.Sprintf("%s-%s", selector, selector)
 }
 
-func (p Parser) getTextForIdentifier(identifier string) (string, bool) {
+func (p *Parser) getTextForIdentifier(identifier string) (string, bool) {
 	if strings.HasPrefix(identifier, "$") {
 		id := strings.TrimLeft(identifier, "$")
 		entry, ok := p.storage.GetLatest(id)
