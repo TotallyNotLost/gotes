@@ -67,7 +67,7 @@ func (p *Parser) expandIncludes(md string) (string, []string) {
 		if !ok {
 			unresolved = append(unresolved, identifier)
 		}
-		sanitized := strings.TrimSpace(RemoveMetadata(RemoveMetadata(text, "id"), "tags"))
+		sanitized := strings.TrimSpace(RemoveMetadata(RemoveMetadata(text, "id"), "related"))
 
 		return lipgloss.NewStyle().Border(lipgloss.NormalBorder()).Render(sanitized)
 	})

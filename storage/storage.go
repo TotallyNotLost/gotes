@@ -36,20 +36,20 @@ func loadEntries(file string) []Entry {
 	return entries
 }
 
-func GetMetadata(text string) map[string]string {
+func GetMetadata(text string) map[string][]string {
 	lines := strings.Split(text, "\n")
 
 	metaLines := lo.Filter(lines, func(line string, index int) bool {
 		return isMetadata(line)
 	})
 
-	o := make(map[string]string)
+	o := make(map[string][]string)
 
 	for _, ml := range metaLines {
 		r, _ := regexp.Compile("^\\[_metadata_:*(\\w+)\\]:# \"(.*)\"$")
 		key := r.FindStringSubmatch(ml)[1]
 		value := r.FindStringSubmatch(ml)[2]
-		o[key] = value
+		o[key] = append(o[key], value)
 	}
 
 	return o

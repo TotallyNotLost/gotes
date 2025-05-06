@@ -15,9 +15,7 @@ type Entry struct {
 	start          int
 	end            int
 	text           string
-	tags           []string
 	relatedIds     []string
-	relatedTags    []string
 	relatedRegexps []*regexp.Regexp
 	// Index of the entry within the file
 	// Used to order the entries roughly by age
@@ -31,41 +29,34 @@ type Entry struct {
 func NewEntry(file string, text string, start int, end int, index int) Entry {
 	metadata := GetMetadata(text)
 
-	id, ok := metadata["id"]
-	if !ok {
+	var id string
+	ids, ok := metadata["id"]
+	if !ok || len(ids) == 0 {
 		h := sha1.New()
 		h.Write([]byte(text))
 		id = hex.EncodeToString(h.Sum(nil))
 		text += fmt.Sprintf("\n[_metadata_:id]:# \"%s\"", id)
+	} else {
+		id = lo.LastOrEmpty(ids)
 	}
 
-	var tags []string
-	if t, ok := metadata["tags"]; ok {
-		tags = strings.Split(t, ",")
-	}
-
-	relatedIdentifier := metadata["related"]
 	isNotEmpty := func(s string, index int) bool {
 		return s != ""
 	}
-	relatedIdentifiers := lo.Filter(strings.Split(relatedIdentifier, ","), isNotEmpty)
+	relatedIdentifiers := lo.Filter(metadata["related"], isNotEmpty)
 	hasPrefix := func(prefix string) func(string, int) bool {
 		return func(identifier string, index int) bool {
 			return strings.HasPrefix(identifier, prefix)
 		}
 	}
-	hasHashtagPrefix := hasPrefix("#")
-	hasDollarPrefix := hasPrefix("$")
-	notHasPrefix := func(identifier string, index int) bool {
-		return !hasHashtagPrefix(identifier, index) && !hasDollarPrefix(identifier, index)
-	}
+	isId := hasPrefix("id=")
 	removePrefix := func(prefix string) func(string, int) string {
 		return func(identifier string, index int) string {
 			return strings.TrimLeft(identifier, prefix)
 		}
 	}
-	relatedIds := lo.Map(lo.Filter(relatedIdentifiers, hasDollarPrefix), removePrefix("$"))
-	relatedTags := lo.Map(lo.Filter(relatedIdentifiers, hasHashtagPrefix), removePrefix("#"))
+	relatedIds := lo.Map(lo.Filter(relatedIdentifiers, isId), removePrefix("id="))
+
 	createRegexp := func(identifier string, index int) *regexp.Regexp {
 		r, _ := regexp.Compile(identifier)
 		return r
@@ -73,7 +64,8 @@ func NewEntry(file string, text string, start int, end int, index int) Entry {
 	// Auto-match when an entry has this entry's id in its body.
 	relatedRegexps := []*regexp.Regexp{createRegexp(fmt.Sprintf("\\$%s", id), 0)}
 
-	relatedRegexps = append(relatedRegexps, lo.Map(lo.Filter(relatedIdentifiers, notHasPrefix), createRegexp)...)
+	isRegexp := hasPrefix("regexp=")
+	relatedRegexps = append(relatedRegexps, lo.Map(lo.Filter(relatedIdentifiers, isRegexp), createRegexp)...)
 
 	return Entry{
 		id:             id,
@@ -81,9 +73,7 @@ func NewEntry(file string, text string, start int, end int, index int) Entry {
 		start:          start,
 		end:            end,
 		text:           text,
-		tags:           tags,
 		relatedIds:     relatedIds,
-		relatedTags:    relatedTags,
 		relatedRegexps: relatedRegexps,
 		index:          index,
 	}
@@ -113,10 +103,6 @@ func (e Entry) Text() string {
 	return e.text
 }
 
-func (e Entry) Tags() []string {
-	return e.tags
-}
-
 func (e Entry) RelatedIds() []string {
 	return e.relatedIds
 }
@@ -127,11 +113,6 @@ func (e Entry) IsRelated(e2 Entry) bool {
 
 func isRelated(e1 Entry, e2 Entry) bool {
 	check := lo.Contains(e2.RelatedIds(), e1.Id())
-	if check {
-		return true
-	}
-
-	check = lo.Some(e1.relatedTags, e2.Tags())
 	if check {
 		return true
 	}
